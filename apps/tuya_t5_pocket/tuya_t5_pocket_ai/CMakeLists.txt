@@ -9,24 +9,26 @@ set(APP_PATH ${CMAKE_CURRENT_LIST_DIR})
 # APP_NAME
 get_filename_component(APP_NAME ${APP_PATH} NAME)
 
-# APP_SRC
-aux_source_directory(${APP_PATH}/src APP_SRC)
+# APP_SRCS
+aux_source_directory(${APP_PATH}/src APP_SRCS)
 
-# APP_INC
-set(APP_INC ${APP_PATH}/include)
+list(APPEND APP_SRCS ${ai_audio_srcs} ${media_srcs})
 
-# APP_OPTIONS
-set(APP_OPTIONS "")  # -W
+set(APP_INC 
+            ${APP_PATH}/assets
+            ${APP_PATH}/include
+)
+
+list(APPEND APP_INC "${APP_PATH}/assets")
 
 ########################################
 # Target Configure
 ########################################
 add_library(${EXAMPLE_LIB})
-message(STATUS "EXAMPLE_LIB:${APP_PATH}")
 
 target_sources(${EXAMPLE_LIB}
     PRIVATE
-        ${APP_SRC}
+        ${APP_SRCS}
     )
 
 target_include_directories(${EXAMPLE_LIB}
@@ -36,5 +38,16 @@ target_include_directories(${EXAMPLE_LIB}
 
 target_compile_options(${EXAMPLE_LIB}
     PRIVATE
-        ${APP_OPTIONS}
+        "-DLV_LVGL_H_INCLUDE_SIMPLE"
     )
+
+########################################
+# Add subdirectory
+########################################
+
+if (CONFIG_ENABLE_CHAT_DISPLAY STREQUAL "y")
+        add_subdirectory(${APP_PATH}/src/display)
+endif()
+
+add_subdirectory(${APP_PATH}/../../tuya.ai/ai_components/ai_audio)
+target_include_directories(${EXAMPLE_LIB} PRIVATE ${APP_PATH}/../../tuya.ai/ai_components/ai_audio)
