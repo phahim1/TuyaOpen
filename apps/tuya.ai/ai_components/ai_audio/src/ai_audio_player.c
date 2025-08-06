@@ -250,7 +250,7 @@ static void __ai_audio_player_task(void *arg)
 
         tal_mutex_unlock(sg_player.mutex);
 
-        tal_system_sleep(10);
+        tal_system_sleep(3);
     }
 }
 
@@ -309,9 +309,8 @@ OPERATE_RET ai_audio_player_init(void)
     TUYA_CALL_ERR_GOTO(tal_mutex_create_init(&sg_player.spk_rb_mutex), __ERR);
 
     // thread init
-    TUYA_CALL_ERR_GOTO(tkl_thread_create_in_psram(&sg_player.thrd_hdl, "ai_player", 1024 * 4, THREAD_PRIO_1,
-                                                  __ai_audio_player_task, NULL),
-                       __ERR);
+    TUYA_CALL_ERR_GOTO(tkl_thread_create(&sg_player.thrd_hdl, "ai_player", 1024 * 4, THREAD_PRIO_0,
+                                        __ai_audio_player_task, NULL), __ERR);
 
     PR_DEBUG("app player init success");
 

@@ -66,7 +66,8 @@ extern const lv_font_t *font_emoji_64_init(void);
 /***********************************************************
 ***********************variable define**********************
 ***********************************************************/
-#if defined(BOARD_CHOICE_BREAD_COMPACT_WIFI) || defined(BOARD_CHOICE_XINGZHI_CUBE_0_96_OLED_WIFI)
+#if defined(BOARD_CHOICE_BREAD_COMPACT_WIFI) || defined(BOARD_CHOICE_XINGZHI_CUBE_0_96_OLED_WIFI) ||\
+    defined(BOARD_CHOICE_TUYA_T5AI_POCKET)
 static UI_EMOJI_LIST_T sg_awesome_emo_list[] = {
     {"NEUTRAL", FONT_AWESOME_EMOJI_NEUTRAL},   {"SAD", FONT_AWESOME_EMOJI_SAD},
     {"ANGRY", FONT_AWESOME_EMOJI_ANGRY},       {"SURPRISE", FONT_AWESOME_EMOJI_SURPRISED},
@@ -107,6 +108,11 @@ static OPERATE_RET __get_ui_font(UI_FONT_T *ui_font)
     ui_font->icon = (lv_font_t *)&font_awesome_16_4;
     ui_font->emoji = (lv_font_t *)font_emoji_64_init();
     ui_font->emoji_list = sg_emo_list;
+#elif defined(ENABLE_GUI_OLED)
+    ui_font->text = (lv_font_t *)&font_puhui_14_1;
+    ui_font->icon = (lv_font_t *)&font_awesome_14_1;
+    ui_font->emoji = (lv_font_t *)&font_awesome_30_1;
+    ui_font->emoji_list = sg_awesome_emo_list;
 #endif
 #elif defined(BOARD_CHOICE_BREAD_COMPACT_WIFI)
     ui_font->text = (lv_font_t *)&font_puhui_14_1;

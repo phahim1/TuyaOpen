@@ -30,6 +30,8 @@
 #include "tkl_audio.h"
 #include "tkl_gpio.h"
 
+#include "mp3dec.h"
+
 #include "wav_encode.h"
 
 /***********************************************************

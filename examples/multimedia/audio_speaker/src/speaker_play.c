@@ -19,7 +19,7 @@
 #include "tkl_memory.h"
 #include "tkl_audio.h"
 
-#include <modules/mp3dec.h>
+#include "mp3dec.h"
 
 #include "app_media.h"
 

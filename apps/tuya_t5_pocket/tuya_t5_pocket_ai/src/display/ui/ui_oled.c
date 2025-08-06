@@ -256,7 +256,7 @@ int ui_init(UI_FONT_T *ui_font)
     } else if (LV_HOR_RES == 128 && LV_VER_RES == 64) {
         return ui_init_128X64(ui_font);
     } else {
-        return -1; // Unsupported resolution
+        return ui_init_128X32(ui_font);
     }
 }
 
