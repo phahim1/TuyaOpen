@@ -18,14 +18,12 @@
 #include "tkl_output.h"
 #include "tal_api.h"
 
-#include "tdd_button_gpio.h"
 #include "tdl_button_manage.h"
 
 #include "board_com_api.h"
 /***********************************************************
 *************************micro define***********************
 ***********************************************************/
-#define APP_BUTTON_NAME "app_button"
 
 /***********************************************************
 ***********************typedef define***********************

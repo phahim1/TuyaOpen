@@ -36,16 +36,13 @@
 #include "lwip_init.h"
 #endif
 
-#if defined(ENABLE_CHAT_DISPLAY) && (ENABLE_CHAT_DISPLAY == 1)
 #include "app_display.h"
-#endif
 
 #include "board_com_api.h"
 
-#include "app_chat_bot.h"
+#include "app_pocket.h"
 #include "ai_audio.h"
 #include "reset_netcfg.h"
-#include "app_system_info.h"
 
 /* Tuya device handle */
 tuya_iot_client_t ai_client;
@@ -100,11 +97,6 @@ OPERATE_RET audio_dp_obj_proc(dp_obj_recv_t *dpobj)
             uint8_t volume = dp->value.dp_value;
             PR_DEBUG("volume:%d", volume);
             ai_audio_set_volume(volume);
-#if defined(ENABLE_CHAT_DISPLAY) && (ENABLE_CHAT_DISPLAY == 1)
-            char volume_str[20] = {0};
-            snprintf(volume_str, sizeof(volume_str), "%s%d", VOLUME, volume);
-            app_display_send_msg(TY_DISPLAY_TP_NOTIFICATION, (uint8_t *)volume_str, strlen(volume_str));
-#endif
             break;
         }
         default:
@@ -165,11 +157,6 @@ void user_event_handler_on(tuya_iot_client_t *client, tuya_event_msg_t *event)
         static uint8_t first = 1;
         if (first) {
             first = 0;
-
-#if defined(ENABLE_CHAT_DISPLAY) && (ENABLE_CHAT_DISPLAY == 1)
-            UI_WIFI_STATUS_E wifi_status = UI_WIFI_STATUS_GOOD;
-            app_display_send_msg(TY_DISPLAY_TP_NETWORK, (uint8_t *)&wifi_status, sizeof(UI_WIFI_STATUS_E));
-#endif
 
             ai_audio_player_play_alert(AI_AUDIO_ALERT_NETWORK_CONNECTED);
             ai_audio_volume_upload();
@@ -325,12 +312,10 @@ void user_main(void)
         PR_ERR("board_register_hardware failed");
     }
 
-    ret = app_chat_bot_init();
+    ret = app_pocket_init();
     if (ret != OPRT_OK) {
-        PR_ERR("tuya_audio_recorde_init failed");
+        PR_ERR("app_pocket_init failed");
     }
-
-    app_system_info();
 
     /* Start tuya iot task */
     tuya_iot_start(&ai_client);

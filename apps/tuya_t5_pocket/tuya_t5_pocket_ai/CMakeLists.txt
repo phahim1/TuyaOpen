@@ -45,9 +45,7 @@ target_compile_options(${EXAMPLE_LIB}
 # Add subdirectory
 ########################################
 
-if (CONFIG_ENABLE_CHAT_DISPLAY STREQUAL "y")
-        add_subdirectory(${APP_PATH}/src/display)
-endif()
+add_subdirectory(${APP_PATH}/src/display)
 
 add_subdirectory(${APP_PATH}/../../tuya.ai/ai_components/ai_audio)
 target_include_directories(${EXAMPLE_LIB} PRIVATE ${APP_PATH}/../../tuya.ai/ai_components/ai_audio)
