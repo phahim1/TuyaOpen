@@ -26,14 +26,10 @@
 /*********************
  *      DEFINES
  *********************/
-// LVGL key codes
-#define KEY_UP    17  // LV_KEY_UP
-#define KEY_LEFT  20  // LV_KEY_LEFT
-#define KEY_DOWN  18  // LV_KEY_DOWN
-#define KEY_RIGHT 19  // LV_KEY_RIGHT
-#define KEY_ENTER 10  // LV_KEY_ENTER
-#define KEY_ESC   27  // LV_KEY_ESC
-#define KEY_I     105 // 'i' key
+
+// Testing key mappings:
+// Battery: A=empty, S=1bar, D=2bar, F=3bar, G=4bar, H=5bar, J=full, C=charging
+// Pet Animation: 1=normal, 2=sleep, 3=dance, 4=eat, 5=bath, 6=toilet, 7=sick, 8=happy, 9=angry, 0=cry
 
 /**********************
  *      TYPEDEFS
@@ -51,7 +47,7 @@ typedef struct {
  **********************/
 static void init_app_data(void);
 static void create_main_screen(void);
-static void keyboard_event_cb(lv_event_t *e);
+// static void keyboard_event_cb(lv_event_t *e);
 static void handle_main_menu_navigation(uint32_t key);
 static void handle_sub_menu_navigation(uint32_t key);
 static void handle_menu_selection(void);
@@ -82,7 +78,7 @@ void lv_demo_ai_pocket_pet(void)
     keyboard_init();
 
     // Create startup screen first
-    // startup_screen_create();
+    startup_screen_create();
 
     // Create main screen (but don't show it yet)
     create_main_screen();
@@ -222,6 +218,67 @@ void lv_demo_ai_pocket_pet_handle_input(uint32_t key)
             lv_demo_ai_pocket_pet_show_toast("Battery: Charging", 1000);
             break;
 
+        // Pet animation testing keys
+        case 49: // '1' key - Normal state
+            printf("1 key pressed - Setting pet to normal state\n");
+            pet_area_set_animation(AI_PET_STATE_NORMAL);
+            lv_demo_ai_pocket_pet_show_toast("Pet: Normal", 1000);
+            break;
+
+        case 50: // '2' key - Sleep
+            printf("2 key pressed - Setting pet to sleep\n");
+            pet_area_set_animation(AI_PET_STATE_SLEEP);
+            lv_demo_ai_pocket_pet_show_toast("Pet: Sleeping", 1000);
+            break;
+
+        case 51: // '3' key - Dance
+            printf("3 key pressed - Setting pet to dance\n");
+            pet_area_set_animation(AI_PET_STATE_DANCE);
+            lv_demo_ai_pocket_pet_show_toast("Pet: Dancing", 1000);
+            break;
+
+        case 52: // '4' key - Eat
+            printf("4 key pressed - Setting pet to eat\n");
+            pet_area_set_animation(AI_PET_STATE_EAT);
+            lv_demo_ai_pocket_pet_show_toast("Pet: Eating", 1000);
+            break;
+
+        case 53: // '5' key - Bath
+            printf("5 key pressed - Setting pet to bath\n");
+            pet_area_set_animation(AI_PET_STATE_BATH);
+            lv_demo_ai_pocket_pet_show_toast("Pet: Bathing", 1000);
+            break;
+
+        case 54: // '6' key - Toilet
+            printf("6 key pressed - Setting pet to toilet\n");
+            pet_area_set_animation(AI_PET_STATE_TOILET);
+            lv_demo_ai_pocket_pet_show_toast("Pet: Toilet", 1000);
+            break;
+
+        case 55: // '7' key - Sick
+            printf("7 key pressed - Setting pet to sick\n");
+            pet_area_set_animation(AI_PET_STATE_SICK);
+            lv_demo_ai_pocket_pet_show_toast("Pet: Sick", 1000);
+            break;
+
+        case 56: // '8' key - Happy
+            printf("8 key pressed - Setting pet to happy\n");
+            pet_area_set_animation(AI_PET_STATE_HAPPY);
+            lv_demo_ai_pocket_pet_show_toast("Pet: Happy", 1000);
+            break;
+
+        case 57: // '9' key - Angry
+            printf("9 key pressed - Setting pet to angry\n");
+            pet_area_set_animation(AI_PET_STATE_ANGRY);
+            lv_demo_ai_pocket_pet_show_toast("Pet: Angry", 1000);
+            break;
+
+        case 48: // '0' key - Cry
+            printf("0 key pressed - Setting pet to cry\n");
+            pet_area_set_animation(AI_PET_STATE_CRY);
+            lv_demo_ai_pocket_pet_show_toast("Pet: Crying", 1000);
+            break;
+
         default:
             PR_DEBUG("Unhandled key: %d\n", key);
             if(key > 0) {
@@ -300,6 +357,7 @@ static void init_app_data(void)
 {
     memset(&g_app_data, 0, sizeof(ai_pet_app_t));
 }
+#include "lv_port_indev.h"
 
 /**
  * Creates and configures the main screen
@@ -311,9 +369,9 @@ static void create_main_screen(void)
     lv_obj_set_style_bg_color(g_app_data.screen, lv_color_white(), 0);
     lv_obj_set_style_bg_opa(g_app_data.screen, LV_OPA_COVER, 0);
     // Note: We don't load this screen immediately - it will be loaded by the timer
-
-    // Add keyboard event handler to the screen
-    lv_obj_add_event_cb(g_app_data.screen, keyboard_event_cb, LV_EVENT_KEY, NULL);
+ 
+    // // Add keyboard event handler to the screen
+    // lv_obj_add_event_cb(g_app_data.screen, keyboard_event_cb, LV_EVENT_KEY, NULL);
 
     // Make sure the screen can receive keyboard focus
     lv_group_add_obj(lv_group_get_default(), g_app_data.screen);
@@ -331,12 +389,15 @@ static void create_main_screen(void)
 /**
  * Keyboard event handler
  */
-static void keyboard_event_cb(lv_event_t *e)
-{
-    uint32_t key = lv_event_get_key(e);
-    PR_DEBUG("Keyboard event received: key=%d\n", key);
-    lv_demo_ai_pocket_pet_handle_input(key);
-}
+// static void keyboard_event_cb(lv_event_t *e)
+// {
+//     lv_event_code_t code = lv_event_get_code(e);  // 获取事件类型
+//     PR_DEBUG("Keyboard event received: code=%d\n", code);
+
+//     uint32_t key = lv_event_get_key(e);
+//     PR_DEBUG("Keyboard event received: key=%d\n", key);
+//     lv_demo_ai_pocket_pet_handle_input(key);
+// }
 
 /**
  * Handles main menu navigation (up/down/left/right)

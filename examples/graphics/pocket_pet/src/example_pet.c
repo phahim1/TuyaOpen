@@ -39,7 +39,7 @@
 /***********************************************************
 ***********************variable define**********************
 ***********************************************************/
-
+extern void pocket_pet_button_init(void);
 
 /***********************************************************
 ***********************function define**********************
@@ -61,6 +61,8 @@ void user_main(void)
     lv_vendor_init(DISPLAY_NAME);
 
     lv_demo_ai_pocket_pet();
+
+    pocket_pet_button_init();
 
     lv_vendor_start();
 }

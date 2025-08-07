@@ -131,13 +131,13 @@ void user_main(void)
     tdl_joystick_event_register(sg_joystick_hdl, TDL_JOYSTICK_LONG_LEFT, __stick_function_cb);
     tdl_joystick_event_register(sg_joystick_hdl, TDL_JOYSTICK_LONG_RIGHT, __stick_function_cb);
 
-    int adc_value[2] = {0}; /* adc value array, x and y */
+    // int adc_value[2] = {0}; /* adc value array, x and y */
 
     while(1) {
-        tdl_joystick_get_raw_xy(sg_joystick_hdl, &adc_value[0], &adc_value[1]);
-        PR_DEBUG("raw value_X = %d, value_Y = %d", adc_value[0], adc_value[1]);
-        tdl_joystick_calibrated_xy(sg_joystick_hdl,  &adc_value[0], &adc_value[1]);
-        PR_DEBUG("cali  value_X = %d, value_Y = %d", adc_value[0], adc_value[1]);
+        // tdl_joystick_get_raw_xy(sg_joystick_hdl, &adc_value[0], &adc_value[1]);
+        // PR_DEBUG("raw value_X = %d, value_Y = %d", adc_value[0], adc_value[1]);
+        // tdl_joystick_calibrated_xy(sg_joystick_hdl,  &adc_value[0], &adc_value[1]);
+        // PR_DEBUG("cali  value_X = %d, value_Y = %d", adc_value[0], adc_value[1]);
         tal_system_sleep(1000);
     }
 
