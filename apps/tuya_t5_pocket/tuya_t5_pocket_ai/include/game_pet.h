@@ -44,6 +44,8 @@ OPERATE_RET game_pet_operation(pet_event_type_t idx, bool show_now);
  */
 OPERATE_RET game_pet_init(void);
 
+OPERATE_RET game_pet_reset(void);
+
 #ifdef __cplusplus
 }
 #endif

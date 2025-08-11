@@ -145,6 +145,8 @@ void user_event_handler_on(tuya_iot_client_t *client, tuya_event_msg_t *event)
         }
 
         ai_audio_player_play_alert(AI_AUDIO_ALERT_NETWORK_CFG);
+        // app_display_send_msg(POCKET_DISP_TP_WIFI_FIND, NULL, 0);
+        app_display_send_msg(POCKET_DISP_TP_WIFI_OFF, NULL, 0);
         break;
 
     case TUYA_EVENT_BIND_TOKEN_ON:
@@ -161,6 +163,7 @@ void user_event_handler_on(tuya_iot_client_t *client, tuya_event_msg_t *event)
 
             ai_audio_player_play_alert(AI_AUDIO_ALERT_NETWORK_CONNECTED);
             ai_audio_volume_upload();
+            app_display_send_msg(POCKET_DISP_TP_WIFI_CONNECTED, NULL, 0);
         }
         break;
 

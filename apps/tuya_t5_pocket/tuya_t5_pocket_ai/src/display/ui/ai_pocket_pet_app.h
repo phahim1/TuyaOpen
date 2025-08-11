@@ -15,6 +15,9 @@ extern "C" {
  *********************/
 #include "../lvgl/lvgl.h"
 
+
+#include "status_bar.h"
+#include "toast.h"
 /*********************
  *      DEFINES
  *********************/
@@ -26,13 +29,13 @@ extern "C" {
 #endif
 
 // LVGL key codes
-#define KEY_UP    17  // LV_KEY_UP
-#define KEY_LEFT  20  // LV_KEY_LEFT
-#define KEY_DOWN  18  // LV_KEY_DOWN
-#define KEY_RIGHT 19  // LV_KEY_RIGHT
-#define KEY_ENTER 10  // LV_KEY_ENTER
-#define KEY_ESC   27  // LV_KEY_ESC
-#define KEY_I     105 // 'i' key
+#define KEY_UP    17 
+#define KEY_LEFT  20 
+#define KEY_DOWN  18 
+#define KEY_RIGHT 19 
+#define KEY_ENTER 10 
+#define KEY_ESC   27 
+#define KEY_AI    105
 
 /**********************
  *      TYPEDEFS

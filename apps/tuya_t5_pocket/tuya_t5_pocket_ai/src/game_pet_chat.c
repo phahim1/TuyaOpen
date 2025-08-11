@@ -61,9 +61,11 @@ typedef struct {
     const CHAT_WORK_MODE_INFO_T *work;
 } APP_CHAT_BOT_S;
 
-/***********************************************************
-***********************const declaration********************
-***********************************************************/
+typedef struct {
+    char  *emoj_name;
+    POCKET_DISP_TP_E disp_tp;
+} AI_EMOJ_DISP_MAP_T;
+
 const CHAT_WORK_MODE_INFO_T cAPP_WORK_HOLD = {
     .mode = APP_CHAT_MODE_KEY_PRESS_HOLD_SINGLE,
     .auido_mode = AI_AUDIO_MODE_MANUAL_SINGLE_TALK,
@@ -104,6 +106,13 @@ const CHAT_WORK_MODE_INFO_T *cWORK_MODE_INFO_LIST[] = {
     &cAPP_WORK_WAKEUP_FREE,
 };
 #endif
+
+const AI_EMOJ_DISP_MAP_T cAI_EMOJI_DISP_LIST[] = {
+    {"HAPPY",    POCKET_DISP_TP_EMOJ_HAPPY},
+    {"ANGRY",    POCKET_DISP_TP_EMOJ_ANGRY},
+    {"FEARFUL",  POCKET_DISP_TP_EMOJ_CRY},
+    {"SAD",      POCKET_DISP_TP_EMOJ_CRY},
+};
 /***********************************************************
 ***********************variable define**********************
 ***********************************************************/
@@ -158,8 +167,11 @@ static void __app_ai_audio_evt_inform_cb(AI_AUDIO_EVENT_E event, uint8_t *data, 
                 PR_DEBUG("emotion name:%s", emo->name);
             }
 
-            if (emo->text) {
-                PR_DEBUG("emotion text:%s", emo->text);
+            for(int i=0; i<CNTSOF(cAI_EMOJI_DISP_LIST); i++) {
+                if(strcmp(emo->name, cAI_EMOJI_DISP_LIST[i].emoj_name) == 0) {
+                    app_display_send_msg(cAI_EMOJI_DISP_LIST[i].disp_tp, NULL, 0);
+                    break;
+                }
             }
         }
     } break;
@@ -258,8 +270,7 @@ static void __app_button_function_cb(char *name, TDL_BUTTON_TOUCH_EVENT_E event,
             tdl_led_set_status(sg_led_hdl, TDL_LED_ON);
 #endif
             ai_audio_manual_start_single_talk();
-            app_display_ai();
-
+            app_display_send_msg(POCKET_DISP_TP_AI, NULL, 0);
         }
     } break;
     case TDL_BUTTON_PRESS_UP: {

@@ -19,9 +19,7 @@
 
 #define PET_DEBUG_ENABLE 0
 
-#if defined(PET_DEBUG_ENABLE) && (PET_DEBUG_ENABLE == 1)
-#include "tdl_button_manage.h"
-#endif
+extern void pocket_game_pet_indev_init(void);
 
 /*============================ MACROS ========================================*/
 #define DEFAULT_STATE_VALUE 70
@@ -72,10 +70,6 @@ static TIMER_ID s_pet_timer_cycle_id = NULL;
 static TIMER_ID s_pet_timer_once_id = NULL;
 static int *s_pet_state = NULL;
 static pet_mood_dp_value_t s_pet_mood_dp_value = MODE_DP_HAPPY;
-
-#if defined(PET_DEBUG_ENABLE) && (PET_DEBUG_ENABLE == 1)
-static TDL_BUTTON_HANDLE sg_button_hdl = NULL;
-#endif
 
 /*============================ IMPLEMENTATION ================================*/
 // display pet state on lvgl
@@ -380,24 +374,6 @@ static void __timer_cb(TIMER_ID timer_id, void *arg)
         game_pet_operation(PET_EVENT_TIMER, true);
     }
 }
-#if defined(PET_DEBUG_ENABLE) && (PET_DEBUG_ENABLE == 1)
-static OPERATE_RET __app_open_button(void)
-{
-    OPERATE_RET rt = OPRT_OK;
-
-    TDL_BUTTON_CFG_T button_cfg = {.long_start_valid_time = 3000,
-                                   .long_keep_timer = 1000,
-                                   .button_debounce_time = 50,
-                                   .button_repeat_valid_count = 2,
-                                   .button_repeat_valid_time = 500};
-    TUYA_CALL_ERR_RETURN(tdl_button_create(BUTTON_NAME_4, &button_cfg, &sg_button_hdl));
-
-    // tdl_button_event_register(sg_button_hdl, TDL_BUTTON_PRESS_SINGLE_CLICK, __app_button_function_cb);
-    tdl_button_event_register(sg_button_hdl, TDL_BUTTON_LONG_PRESS_START, __app_button_function_cb);
-
-    return rt;
-}
-#endif
 
 // init
 OPERATE_RET game_pet_init(void)
@@ -428,9 +404,7 @@ OPERATE_RET game_pet_init(void)
 
     menu_system_register_pet_event_callback(pet_event_callback, NULL);
 
-#if defined(PET_DEBUG_ENABLE) && (PET_DEBUG_ENABLE == 1)
-    TUYA_CALL_ERR_RETURN(__app_open_button());
-#endif
+    pocket_game_pet_indev_init();
 
     return OPRT_OK;
 }

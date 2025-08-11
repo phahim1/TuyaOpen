@@ -119,7 +119,7 @@ void lv_demo_ai_pocket_pet_handle_input(uint32_t key)
     }
 
     PR_DEBUG("Key pressed: %d (UP:%d LEFT:%d DOWN:%d RIGHT:%d ENTER:%d ESC:%d I:%d)\n",
-           key, KEY_UP, KEY_LEFT, KEY_DOWN, KEY_RIGHT, KEY_ENTER, KEY_ESC, KEY_I);
+           key, KEY_UP, KEY_LEFT, KEY_DOWN, KEY_RIGHT, KEY_ENTER, KEY_ESC, KEY_AI);
 
     switch(key) {
         case KEY_UP:
@@ -164,7 +164,8 @@ void lv_demo_ai_pocket_pet_handle_input(uint32_t key)
             }
             break;
 
-        case KEY_I:
+        /***********************test*************************/
+        case KEY_AI:
             PR_DEBUG("I key pressed - AI function invoked\n");
             handle_ai_function();
             break;

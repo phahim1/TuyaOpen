@@ -24,28 +24,34 @@ extern "C" {
 /***********************************************************
 ************************macro define************************
 ***********************************************************/
-// display network status
-typedef uint8_t UI_WIFI_STATUS_E;
-#define UI_WIFI_STATUS_DISCONNECTED 0
-#define UI_WIFI_STATUS_GOOD         1
-#define UI_WIFI_STATUS_FAIR         2
-#define UI_WIFI_STATUS_WEAK         3
-
-#define EMOJI_NEUTRAL        "NEUTRAL"
-#define EMOJI_SAD            "SAD"
-#define EMOJI_ANGRY          "ANGRY"
-#define EMOJI_SURPRISE       "SURPRISE"
-#define EMOJI_CONFUSED       "CONFUSED"
-#define EMOJI_THINKING       "THINKING"
-#define EMOJI_HAPPY          "HAPPY"
-#define EMOJI_TOUCH          "TOUCH"
-#define EMOJI_FEARFUL        "FEARFUL"
-#define EMOJI_DISAPPOINTED   "DISAPPOINTED"
-#define EMOJI_ANNOYED        "ANNOYED"
 
 /***********************************************************
 ***********************typedef define***********************
 ***********************************************************/
+typedef enum {
+    POCKET_DISP_TP_MENU_UP,
+    POCKET_DISP_TP_MENU_DOWN,
+    POCKET_DISP_TP_MENU_RIGHT,
+    POCKET_DISP_TP_MENU_LEFT,
+    POCKET_DISP_TP_MENU_ENTER,
+    POCKET_DISP_TP_MENU_ESC,
+
+    POCKET_DISP_TP_AI,
+
+    POCKET_DISP_TP_EMOJ_HAPPY,
+    POCKET_DISP_TP_EMOJ_ANGRY,
+    POCKET_DISP_TP_EMOJ_CRY,
+
+    POCKET_DISP_TP_WIFI_OFF,
+    POCKET_DISP_TP_WIFI_FIND,
+    POCKET_DISP_TP_WIFI_ADD,
+    POCKET_DISP_TP_WIFI_CONNECTED,
+    
+    POCKET_DISP_TP_BATTERY_STATUS,
+    POCKET_DISP_TP_BATTERY_CHARGING,
+
+    POCKET_DISP_TP_MAX,
+} POCKET_DISP_TP_E;
 
 /***********************************************************
 ********************function declaration********************
@@ -58,7 +64,16 @@ typedef uint8_t UI_WIFI_STATUS_E;
  */
 OPERATE_RET app_display_init(void);
 
-void app_display_ai(void);
+/**
+ * @brief Send display message to the display system
+ *
+ * @param tp Type of the display message
+ * @param data Pointer to the message data
+ * @param len Length of the message data
+ * @return OPERATE_RET Result of sending the message, OPRT_OK indicates success
+ */
+OPERATE_RET app_display_send_msg(POCKET_DISP_TP_E tp, uint8_t *data, int len);
+
 
 
 #ifdef __cplusplus
