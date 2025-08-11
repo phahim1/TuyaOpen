@@ -52,7 +52,7 @@ static void handle_main_menu_navigation(uint32_t key);
 static void handle_sub_menu_navigation(uint32_t key);
 static void handle_menu_selection(void);
 static void handle_sub_menu_selection(void);
-static void handle_ai_function(void);
+// static void handle_ai_function(void);
 
 /**********************
  *  STATIC VARIABLES
@@ -434,7 +434,7 @@ static void handle_sub_menu_selection(void)
 /**
  * Handles AI function (I key)
  */
-static void handle_ai_function(void)
+void handle_ai_function(void)
 {
     if(menu_system_get_current_menu() == AI_PET_MENU_MAIN) {
         // Show toast message to confirm AI action

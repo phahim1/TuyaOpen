@@ -12,9 +12,9 @@
 #include "tal_api.h"
 #include "tuya_ringbuf.h"
 
-#if defined(ENABLE_BUTTON) && (ENABLE_BUTTON == 1)
+#include "tuya_iot.h"
+
 #include "tdl_button_manage.h"
-#endif
 
 #if defined(ENABLE_LED) && (ENABLE_LED == 1)
 #include "tdl_led_manage.h"
@@ -27,6 +27,8 @@
 /***********************************************************
 ************************macro define************************
 ***********************************************************/
+#define TRIG_BUTTON_NAME "btn_trig"
+
 #define AI_AUDIO_TEXT_BUFF_LEN (1024)
 #define AI_AUDIO_TEXT_SHOW_LEN (60 * 3)
 
@@ -128,9 +130,7 @@ static APP_CHAT_BOT_S sg_chat_bot = {
 static TDL_LED_HANDLE_T sg_led_hdl = NULL;
 #endif
 
-#if defined(ENABLE_BUTTON) && (ENABLE_BUTTON == 1)
-// static TDL_BUTTON_HANDLE sg_button_hdl = NULL;
-#endif
+ static TDL_BUTTON_HANDLE sg_button_hdl = NULL;
 
 /***********************************************************
 ***********************function define**********************
@@ -233,79 +233,79 @@ uint8_t app_chat_bot_get_enable(void)
     return sg_chat_bot.is_enable;
 }
 
-#if defined(ENABLE_BUTTON) && (ENABLE_BUTTON == 1)
-// static void __app_button_function_cb(char *name, TDL_BUTTON_TOUCH_EVENT_E event, void *argc)
-// {
-//     APP_CHAT_MODE_E work_mode = sg_chat_bot.work->mode;
-//     PR_DEBUG("app button function cb, work mode: %d", work_mode);
+static void __app_button_function_cb(char *name, TDL_BUTTON_TOUCH_EVENT_E event, void *argc)
+{
+    APP_CHAT_MODE_E work_mode = sg_chat_bot.work->mode;
+    PR_DEBUG("app button function cb, work mode: %d", work_mode);
 
-//     // network status
-//     netmgr_status_e status = NETMGR_LINK_DOWN;
-//     netmgr_conn_get(NETCONN_AUTO, NETCONN_CMD_STATUS, &status);
-//     if (status == NETMGR_LINK_DOWN) {
-//         PR_DEBUG("network is down, ignore button event");
-//         if (ai_audio_player_is_playing()) {
-//             return;
-//         }
-//         ai_audio_player_play_alert(AI_AUDIO_ALERT_NOT_ACTIVE);
-//         return;
-//     }
+    // network status
+    netmgr_status_e status = NETMGR_LINK_DOWN;
+    netmgr_conn_get(NETCONN_AUTO, NETCONN_CMD_STATUS, &status);
+    if (status == NETMGR_LINK_DOWN) {
+        PR_DEBUG("network is down, ignore button event");
+        if (ai_audio_player_is_playing()) {
+            return;
+        }
+        ai_audio_player_play_alert(AI_AUDIO_ALERT_NOT_ACTIVE);
+        return;
+    }
 
-//     switch (event) {
-//     case TDL_BUTTON_PRESS_DOWN: {
-//         if (work_mode == APP_CHAT_MODE_KEY_PRESS_HOLD_SINGLE) {
-//             PR_DEBUG("button press down, listen start");
-// #if defined(ENABLE_LED) && (ENABLE_LED == 1)
-//             tdl_led_set_status(sg_led_hdl, TDL_LED_ON);
-// #endif
-//             ai_audio_manual_start_single_talk();
-//         }
-//     } break;
-//     case TDL_BUTTON_PRESS_UP: {
-//         if (work_mode == APP_CHAT_MODE_KEY_PRESS_HOLD_SINGLE) {
-//             PR_DEBUG("button press up, listen end");
-// #if defined(ENABLE_LED) && (ENABLE_LED == 1)
-//             tdl_led_set_status(sg_led_hdl, TDL_LED_OFF);
-// #endif
-//             ai_audio_manual_stop_single_talk();
-//         }
-//     } break;
-//     case TDL_BUTTON_PRESS_SINGLE_CLICK: {
-//         if (work_mode == APP_CHAT_MODE_KEY_PRESS_HOLD_SINGLE) {
-//             break;
-//         }
-
-//         if (sg_chat_bot.is_enable) {
-//             ai_audio_set_wakeup();
-//         } else {
-//             __app_chat_bot_enable(true);
-//         }
-//         PR_DEBUG("button single click");
-//     } break;
-//     default:
-//         break;
-//     }
-// }
-
-// static OPERATE_RET __app_open_button(void)
-// {
-//     OPERATE_RET rt = OPRT_OK;
-
-//     TDL_BUTTON_CFG_T button_cfg = {.long_start_valid_time = 3000,
-//                                    .long_keep_timer = 1000,
-//                                    .button_debounce_time = 50,
-//                                    .button_repeat_valid_count = 2,
-//                                    .button_repeat_valid_time = 500};
-//     TUYA_CALL_ERR_RETURN(tdl_button_create(BUTTON_NAME, &button_cfg, &sg_button_hdl));
-
-//     tdl_button_event_register(sg_button_hdl, TDL_BUTTON_PRESS_DOWN, __app_button_function_cb);
-//     tdl_button_event_register(sg_button_hdl, TDL_BUTTON_PRESS_UP, __app_button_function_cb);
-//     tdl_button_event_register(sg_button_hdl, TDL_BUTTON_PRESS_SINGLE_CLICK, __app_button_function_cb);
-//     tdl_button_event_register(sg_button_hdl, TDL_BUTTON_PRESS_DOUBLE_CLICK, __app_button_function_cb);
-
-//     return rt;
-// }
+    switch (event) {
+    case TDL_BUTTON_PRESS_DOWN: {
+        if (work_mode == APP_CHAT_MODE_KEY_PRESS_HOLD_SINGLE) {
+            PR_DEBUG("button press down, listen start");
+#if defined(ENABLE_LED) && (ENABLE_LED == 1)
+            tdl_led_set_status(sg_led_hdl, TDL_LED_ON);
 #endif
+            ai_audio_manual_start_single_talk();
+            app_display_ai();
+
+        }
+    } break;
+    case TDL_BUTTON_PRESS_UP: {
+        if (work_mode == APP_CHAT_MODE_KEY_PRESS_HOLD_SINGLE) {
+            PR_DEBUG("button press up, listen end");
+#if defined(ENABLE_LED) && (ENABLE_LED == 1)
+            tdl_led_set_status(sg_led_hdl, TDL_LED_OFF);
+#endif
+            ai_audio_manual_stop_single_talk();
+        }
+    } break;
+    case TDL_BUTTON_PRESS_SINGLE_CLICK: {
+        if (work_mode == APP_CHAT_MODE_KEY_PRESS_HOLD_SINGLE) {
+            break;
+        }
+
+        if (sg_chat_bot.is_enable) {
+            ai_audio_set_wakeup();
+        } else {
+            __app_chat_bot_enable(true);
+        }
+        PR_DEBUG("button single click");
+    } break;
+    default:
+        break;
+    }
+}
+
+static OPERATE_RET __app_open_button(void)
+{
+    OPERATE_RET rt = OPRT_OK;
+
+    TDL_BUTTON_CFG_T button_cfg = {.long_start_valid_time = 3000,
+                                   .long_keep_timer = 1000,
+                                   .button_debounce_time = 50,
+                                   .button_repeat_valid_count = 2,
+                                   .button_repeat_valid_time = 500};
+    TUYA_CALL_ERR_RETURN(tdl_button_create(TRIG_BUTTON_NAME, &button_cfg, &sg_button_hdl));
+
+    tdl_button_event_register(sg_button_hdl, TDL_BUTTON_PRESS_DOWN, __app_button_function_cb);
+    tdl_button_event_register(sg_button_hdl, TDL_BUTTON_PRESS_UP, __app_button_function_cb);
+    tdl_button_event_register(sg_button_hdl, TDL_BUTTON_PRESS_SINGLE_CLICK, __app_button_function_cb);
+    tdl_button_event_register(sg_button_hdl, TDL_BUTTON_PRESS_DOUBLE_CLICK, __app_button_function_cb);
+
+    return rt;
+}
 
 OPERATE_RET app_pocket_init(void)
 {
@@ -320,9 +320,7 @@ OPERATE_RET app_pocket_init(void)
 
     TUYA_CALL_ERR_RETURN(ai_audio_init(&ai_audio_cfg));
 
-#if defined(ENABLE_BUTTON) && (ENABLE_BUTTON == 1)
-    // TUYA_CALL_ERR_RETURN(__app_open_button());
-#endif
+    TUYA_CALL_ERR_RETURN(__app_open_button());
 
 #if defined(ENABLE_LED) && (ENABLE_LED == 1)
     sg_led_hdl = tdl_led_find_dev(LED_NAME);

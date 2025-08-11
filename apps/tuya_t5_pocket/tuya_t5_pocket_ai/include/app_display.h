@@ -58,6 +58,8 @@ typedef uint8_t UI_WIFI_STATUS_E;
  */
 OPERATE_RET app_display_init(void);
 
+void app_display_ai(void);
+
 
 #ifdef __cplusplus
 }

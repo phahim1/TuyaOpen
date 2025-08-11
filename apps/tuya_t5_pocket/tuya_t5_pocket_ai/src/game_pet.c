@@ -17,7 +17,7 @@
 #include "ai_audio_player.h"
 #include "game_pet.h"
 
-#define PET_DEBUG_ENABLE 1
+#define PET_DEBUG_ENABLE 0
 
 #if defined(PET_DEBUG_ENABLE) && (PET_DEBUG_ENABLE == 1)
 #include "tdl_button_manage.h"
@@ -380,23 +380,7 @@ static void __timer_cb(TIMER_ID timer_id, void *arg)
         game_pet_operation(PET_EVENT_TIMER, true);
     }
 }
-
 #if defined(PET_DEBUG_ENABLE) && (PET_DEBUG_ENABLE == 1)
-static void __app_button_function_cb(char *name, TDL_BUTTON_TOUCH_EVENT_E event, void *argc)
-{
-    PR_DEBUG("pet button function cb, mode: %d", event);
-    switch (event) {
-    case TDL_BUTTON_LONG_PRESS_START: {
-        game_pet_reset();
-    } break;
-    case TDL_BUTTON_PRESS_SINGLE_CLICK: {
-        game_pet_random_state();
-    } break;
-    default:
-        break;
-    }
-}
-
 static OPERATE_RET __app_open_button(void)
 {
     OPERATE_RET rt = OPRT_OK;

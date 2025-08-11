@@ -159,6 +159,8 @@ bool lv_demo_ai_pocket_pet_get_battery_charging(void);
  */
 lv_obj_t* lv_demo_ai_pocket_pet_get_main_screen(void);
 
+void handle_ai_function(void);
+
 /**********************
  *      MACROS
  **********************/

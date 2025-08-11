@@ -65,3 +65,10 @@ OPERATE_RET app_display_init(void)
 
     return rt;
 }
+
+void app_display_ai(void)
+{
+    lv_vendor_disp_lock();
+    handle_ai_function();
+    lv_vendor_disp_unlock();
+}
