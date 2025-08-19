@@ -163,8 +163,11 @@ void user_main(void)
     sg_p_display_fb->height = sg_display_info.height;
 
     while(1) {
+        __disp_fill_color(sg_p_display_fb, __disp_get_random_color(0xFFFFFFFF));
 
-        tal_system_sleep(2000);
+        tdl_disp_dev_flush(sg_tdl_disp_hdl, sg_p_display_fb);
+
+        tal_system_sleep(500);
     }
 
 
