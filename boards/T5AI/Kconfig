@@ -55,6 +55,13 @@ choice
             rsource "./TUYA_T5AI_POCKET/Kconfig"
         endif
 
+
+    config BOARD_CHOICE_ATK_T5AI_MINI_BOARD
+        bool "ATK_T5AI_MINI_BOARD"
+        if (BOARD_CHOICE_ATK_T5AI_MINI_BOARD)
+            rsource "./ATK_T5AI_MINI_BOARD/Kconfig"
+        endif
+
 # <new-board-add: This line cannot be deleted or modified>
 
 endchoice

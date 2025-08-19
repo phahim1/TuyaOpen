@@ -89,6 +89,10 @@ config ENABLE_MEDIA
     bool
     default y
 
+config ENABLE_IMAGE_CODEC
+    bool
+    default y
+
 config ENABLE_RGB
     bool
     default y
