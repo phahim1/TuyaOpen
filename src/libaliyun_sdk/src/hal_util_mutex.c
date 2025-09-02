@@ -34,20 +34,19 @@ util_mutex_t *util_mutex_create(void)
 {
     util_mutex_t *mutex = (util_mutex_t *)util_malloc(sizeof(util_mutex_t));
     if (mutex == NULL) {
-        UTIL_LOG_E("Failed to allocate memory for mutex");
+        UTIL_LOG_E("util_mutex_create: memory allocation failed");
         return NULL;
     }
 
     TKL_MUTEX_HANDLE tkl_mutex_handle;
     OPERATE_RET ret = tkl_mutex_create_init(&tkl_mutex_handle);
     if (ret != OPRT_OK) {
-        UTIL_LOG_E("Failed to create mutex: %d", ret);
         util_free(mutex);
         return NULL;
     }
 
     mutex->mutex_handle = (void *)tkl_mutex_handle;
-    UTIL_LOG_D("Mutex created successfully");
+    mutex->is_locked = false;
     return mutex;
 }
 
@@ -65,11 +64,13 @@ void util_mutex_delete(util_mutex_t *mutex)
     }
 
     if (mutex->mutex_handle != NULL) {
+        if (mutex->is_locked) {
+            tkl_mutex_unlock((TKL_MUTEX_HANDLE)mutex->mutex_handle);
+        }
         tkl_mutex_release((TKL_MUTEX_HANDLE)mutex->mutex_handle);
     }
 
     util_free(mutex);
-    UTIL_LOG_D("Mutex deleted successfully");
 }
 
 /*****************************************************
@@ -85,47 +86,52 @@ int32_t util_mutex_lock(util_mutex_t *mutex, int32_t timeout)
     UTIL_NULL_CHECK(mutex, UTIL_ERR_INVALID_PARAM);
 
     if (mutex->mutex_handle == NULL) {
-        UTIL_LOG_E("Invalid mutex handle");
         return UTIL_ERR_INVALID_PARAM;
+    }
+
+    if (mutex->is_locked) {
+        return UTIL_ERR_ALREADY;
     }
 
     OPERATE_RET ret;
     if (timeout == MUTEX_WAIT_FOREVER) {
         ret = tkl_mutex_lock((TKL_MUTEX_HANDLE)mutex->mutex_handle);
     } else if (timeout <= 0) {
-        // Try lock, return immediately if not available
         ret = tkl_mutex_trylock((TKL_MUTEX_HANDLE)mutex->mutex_handle);
     } else {
-        // For timeout > 0, we need to implement a polling mechanism since TKL doesn't support timed locks
-        // Try to lock with a small delay between attempts
         uint32_t start_time = tal_system_get_millisecond();
         uint32_t elapsed_time = 0;
+        uint32_t poll_interval = (timeout < 10) ? 1 : (timeout / 10);
+
+        if (poll_interval < 1)
+            poll_interval = 1;
+        if (poll_interval > 10)
+            poll_interval = 10;
 
         while (elapsed_time < (uint32_t)timeout) {
             ret = tkl_mutex_trylock((TKL_MUTEX_HANDLE)mutex->mutex_handle);
             if (ret == OPRT_OK) {
                 break;
             }
-
-            // Small delay to avoid busy waiting
-            tal_system_sleep(1);
+            tal_system_sleep(poll_interval);
             elapsed_time = tal_system_get_millisecond() - start_time;
+            if (elapsed_time >= (uint32_t)timeout) {
+                ret = OPRT_TIMEOUT;
+                break;
+            }
         }
 
-        // If we didn't get the lock within timeout, return timeout error
         if (ret != OPRT_OK) {
-            UTIL_LOG_W("Mutex lock timeout after %d ms", timeout);
             return UTIL_ERR_TIMEOUT;
         }
     }
 
     if (ret == OPRT_OK) {
+        mutex->is_locked = true;
         return UTIL_SUCCESS;
     } else if (ret == OPRT_TIMEOUT) {
-        UTIL_LOG_W("Mutex lock timeout after %d ms", timeout);
         return UTIL_ERR_TIMEOUT;
     } else {
-        UTIL_LOG_E("Failed to lock mutex: %d", ret);
         return UTIL_ERR_FAIL;
     }
 }
@@ -142,15 +148,18 @@ int32_t util_mutex_unlock(util_mutex_t *mutex)
     UTIL_NULL_CHECK(mutex, UTIL_ERR_INVALID_PARAM);
 
     if (mutex->mutex_handle == NULL) {
-        UTIL_LOG_E("Invalid mutex handle");
         return UTIL_ERR_INVALID_PARAM;
+    }
+
+    if (!mutex->is_locked) {
+        return UTIL_ERR_ALREADY;
     }
 
     OPERATE_RET ret = tkl_mutex_unlock((TKL_MUTEX_HANDLE)mutex->mutex_handle);
     if (ret != OPRT_OK) {
-        UTIL_LOG_E("Failed to unlock mutex: %d", ret);
         return UTIL_ERR_FAIL;
     }
 
+    mutex->is_locked = false;
     return UTIL_SUCCESS;
 }

@@ -1,0 +1,441 @@
+/**
+ * @file tuya_main.c
+ * @brief tuya_main module is used to manage the Tuya device application.
+ *
+ * This file provides the implementation of the tuya_main module,
+ * which is responsible for managing the Tuya device application.
+ *
+ * @copyright Copyright (c) 2021-2025 Tuya Inc. All Rights Reserved.
+ *
+ * 2025-07-11   yangjie     Add cellular network support.
+ */
+
+#include "lib_c_sdk.h"
+#include "aliyun_test_api.h"
+#include "tal_time_service.h"
+void util_set_log_level(uint8_t log_lv);
+
+#include "cJSON.h"
+#include "netmgr.h"
+#include "tal_api.h"
+#include "tkl_output.h"
+#include "tuya_config.h"
+#include "tuya_iot.h"
+#include "tuya_iot_dp.h"
+#include "tal_cli.h"
+#include "tuya_authorize.h"
+#include <assert.h>
+#if defined(ENABLE_WIFI) && (ENABLE_WIFI == 1)
+#include "netconn_wifi.h"
+#endif
+#if defined(ENABLE_WIRED) && (ENABLE_WIRED == 1)
+#include "netconn_wired.h"
+#endif
+#if defined(ENABLE_CELLULAR) && (ENABLE_CELLULAR == 1)
+#include "netconn_cellular.h"
+#endif
+#if defined(ENABLE_LIBLWIP) && (ENABLE_LIBLWIP == 1)
+#include "lwip_init.h"
+#endif
+
+#include "reset_netcfg.h"
+
+#if defined(ENABLE_QRCODE) && (ENABLE_QRCODE == 1)
+#include "qrencode_print.h"
+#endif
+
+#ifndef PROJECT_VERSION
+#define PROJECT_VERSION "1.0.0"
+#endif
+
+/* for cli command register */
+extern void tuya_app_cli_init(void);
+
+/* Tuya device handle */
+tuya_iot_client_t client;
+
+/* Tuya license information (uuid authkey) */
+tuya_iot_license_t license;
+
+/* Aliyun HAL test forward declaration */
+static void run_aliyun_sdk_hal_test(void)
+{
+    PR_INFO("=== Starting Aliyun SDK HAL Layer Validation Test ===");
+    PR_INFO("This test validates all HAL implementations according to Aliyun SDK requirements");
+    PR_INFO("Test includes: Memory, Time, Storage, Random, Mutex management");
+
+    // // First, test flash partition accessibility
+    // PR_INFO("=== Testing Flash Partition Accessibility ===");
+    // OPERATE_RET flash_test_result = tkl_flash_test_partition(TUYA_FLASH_TYPE_UF);
+    // if (flash_test_result != OPRT_OK) {
+    //     PR_ERR("Flash partition test failed: %d", flash_test_result);
+    //     PR_ERR("This indicates a fundamental issue with flash access");
+    //     PR_ERR("Please check flash partition configuration and hardware setup");
+    //     return;
+    // }
+    // PR_INFO("Flash partition test passed");
+
+    // Test basic storage operations
+    PR_INFO("=== Testing Basic Storage Operations ===");
+    const char *test_key = "test_storage_key";
+    const uint8_t test_data[] = {0x01, 0x02, 0x03, 0x04};
+    size_t test_data_len = sizeof(test_data);
+
+    // Test write
+    int write_result = tal_kv_set(test_key, test_data, test_data_len);
+    if (write_result != OPRT_OK) {
+        PR_ERR("Storage write test failed: %d", write_result);
+        PR_ERR("This indicates an issue with the storage system");
+        return;
+    }
+    PR_INFO("Storage write test passed");
+
+    // Test read
+    uint8_t *read_data = NULL;
+    size_t read_len = 0;
+    int read_result = tal_kv_get(test_key, &read_data, &read_len);
+    if (read_result != OPRT_OK) {
+        PR_ERR("Storage read test failed: %d", read_result);
+        PR_ERR("This indicates an issue with the storage system");
+        return;
+    }
+
+    if (read_len != test_data_len || memcmp(read_data, test_data, test_data_len) != 0) {
+        PR_ERR("Storage data verification failed");
+        PR_ERR("Expected: %d bytes, Got: %d bytes", test_data_len, read_len);
+        tal_kv_free(read_data);
+        return;
+    }
+    PR_INFO("Storage read test passed");
+
+    // Clean up
+    tal_kv_free(read_data);
+    tal_kv_del(test_key);
+    PR_INFO("Storage cleanup completed");
+
+    // Call the official Aliyun SDK test function
+    int32_t test_result = aliyun_sdk_test();
+
+    if (test_result == 0) {
+        PR_INFO("=== Aliyun SDK HAL Test: PASSED ===");
+        PR_INFO("All HAL implementations are working correctly!");
+        PR_INFO("The output logs above show the detailed test results.");
+    } else {
+        PR_ERR("=== Aliyun SDK HAL Test: FAILED ===");
+        PR_ERR("Test failed with error code: %d", test_result);
+        PR_ERR("Please check the logs above for specific failure details.");
+    }
+
+    PR_INFO("=== Aliyun SDK HAL Validation Test Complete ===");
+}
+
+/* Track if Aliyun HAL test has been run after timestamp sync */
+static int aliyun_hal_test_ran = 0;
+
+/**
+ * @brief user defined log output api, in this demo, it will use uart0 as log-tx
+ *
+ * @param str log string
+ * @return void
+ */
+void user_log_output_cb(const char *str)
+{
+    tkl_log_output(str);
+}
+
+/**
+ * @brief user defined upgrade notify callback, it will notify device a OTA
+ * request received
+ *
+ * @param client device info
+ * @param upgrade the upgrade request info
+ * @return void
+ */
+void user_upgrade_notify_on(tuya_iot_client_t *client, cJSON *upgrade)
+{
+    PR_INFO("----- Upgrade information -----");
+    PR_INFO("OTA Channel: %d", cJSON_GetObjectItem(upgrade, "type")->valueint);
+    PR_INFO("Version: %s", cJSON_GetObjectItem(upgrade, "version")->valuestring);
+    PR_INFO("Size: %s", cJSON_GetObjectItem(upgrade, "size")->valuestring);
+    PR_INFO("MD5: %s", cJSON_GetObjectItem(upgrade, "md5")->valuestring);
+    PR_INFO("HMAC: %s", cJSON_GetObjectItem(upgrade, "hmac")->valuestring);
+    PR_INFO("URL: %s", cJSON_GetObjectItem(upgrade, "url")->valuestring);
+    PR_INFO("HTTPS URL: %s", cJSON_GetObjectItem(upgrade, "httpsUrl")->valuestring);
+}
+
+/**
+ * @brief user defined event handler
+ *
+ * @param client device info
+ * @param event the event info
+ * @return void
+ */
+void user_event_handler_on(tuya_iot_client_t *client, tuya_event_msg_t *event)
+{
+    PR_DEBUG("Tuya Event ID:%d(%s)", event->id, EVENT_ID2STR(event->id));
+    PR_INFO("Device Free heap %d", tal_system_get_free_heap_size());
+    switch (event->id) {
+    case TUYA_EVENT_BIND_START:
+        PR_INFO("Device Bind Start!");
+        break;
+
+    /* Print the QRCode for Tuya APP bind */
+    case TUYA_EVENT_DIRECT_MQTT_CONNECTED: {
+#if defined(ENABLE_QRCODE) && (ENABLE_QRCODE == 1)
+        char buffer[255];
+        sprintf(buffer, "https://smartapp.tuya.com/s/p?p=%s&uuid=%s&v=2.0", TUYA_PRODUCT_ID, license.uuid);
+        qrcode_string_output(buffer, user_log_output_cb, 0);
+#endif
+    } break;
+
+    /* MQTT with tuya cloud is connected, device online */
+    case TUYA_EVENT_MQTT_CONNECTED:
+        PR_INFO("Device MQTT Connected!");
+        break;
+
+    /* RECV upgrade request */
+    case TUYA_EVENT_UPGRADE_NOTIFY:
+        user_upgrade_notify_on(client, event->value.asJSON);
+        break;
+
+    /* Sync time with tuya Cloud */
+    case TUYA_EVENT_TIMESTAMP_SYNC:
+        PR_INFO("Sync timestamp:%d", event->value.asInteger);
+        tal_time_set_posix(event->value.asInteger, 1);
+
+        // Run Aliyun HAL test after timestamp is set, only once
+        if (!aliyun_hal_test_ran) {
+            aliyun_hal_test_ran = 1;
+            run_aliyun_sdk_hal_test();
+        }
+        break;
+    case TUYA_EVENT_RESET:
+        PR_INFO("Device Reset:%d", event->value.asInteger);
+        break;
+
+    /* RECV OBJ DP */
+    case TUYA_EVENT_DP_RECEIVE_OBJ: {
+        dp_obj_recv_t *dpobj = event->value.dpobj;
+        PR_DEBUG("SOC Rev DP Cmd t1:%d t2:%d CNT:%u", dpobj->cmd_tp, dpobj->dtt_tp, dpobj->dpscnt);
+        if (dpobj->devid != NULL) {
+            PR_DEBUG("devid.%s", dpobj->devid);
+        }
+
+        uint32_t index = 0;
+        for (index = 0; index < dpobj->dpscnt; index++) {
+            dp_obj_t *dp = dpobj->dps + index;
+            PR_DEBUG("idx:%d dpid:%d type:%d ts:%u", index, dp->id, dp->type, dp->time_stamp);
+            switch (dp->type) {
+            case PROP_BOOL: {
+                PR_DEBUG("bool value:%d", dp->value.dp_bool);
+                break;
+            }
+            case PROP_VALUE: {
+                PR_DEBUG("int value:%d", dp->value.dp_value);
+                break;
+            }
+            case PROP_STR: {
+                PR_DEBUG("str value:%s", dp->value.dp_str);
+                break;
+            }
+            case PROP_ENUM: {
+                PR_DEBUG("enum value:%u", dp->value.dp_enum);
+                break;
+            }
+            case PROP_BITMAP: {
+                PR_DEBUG("bits value:0x%X", dp->value.dp_bitmap);
+                break;
+            }
+            default: {
+                PR_ERR("idx:%d dpid:%d type:%d ts:%u is invalid", index, dp->id, dp->type, dp->time_stamp);
+                break;
+            }
+            } // end of switch
+        }
+
+        tuya_iot_dp_obj_report(client, dpobj->devid, dpobj->dps, dpobj->dpscnt, 0);
+
+    } break;
+
+    /* RECV RAW DP */
+    case TUYA_EVENT_DP_RECEIVE_RAW: {
+        dp_raw_recv_t *dpraw = event->value.dpraw;
+        PR_DEBUG("SOC Rev DP Cmd t1:%d t2:%d", dpraw->cmd_tp, dpraw->dtt_tp);
+        if (dpraw->devid != NULL) {
+            PR_DEBUG("devid.%s", dpraw->devid);
+        }
+
+        uint32_t index = 0;
+        dp_raw_t *dp = &dpraw->dp;
+        PR_DEBUG("dpid:%d type:RAW len:%d data:", dp->id, dp->len);
+        for (index = 0; index < dp->len; index++) {
+            PR_DEBUG_RAW("%02x", dp->data[index]);
+        }
+
+        tuya_iot_dp_raw_report(client, dpraw->devid, &dpraw->dp, 3);
+
+    } break;
+
+        /* TBD.. add other event if necessary */
+
+    default:
+        break;
+    }
+}
+
+/**
+ * @brief user defined network check callback, it will check the network every
+ * 1sec, in this demo it alwasy return ture due to it's a wired demo
+ *
+ * @return true
+ * @return false
+ */
+bool user_network_check(void)
+{
+    netmgr_status_e status = NETMGR_LINK_DOWN;
+    netmgr_conn_get(NETCONN_AUTO, NETCONN_CMD_STATUS, &status);
+    return status == NETMGR_LINK_DOWN ? false : true;
+}
+
+void user_main(void)
+{
+    int rt = OPRT_OK;
+
+    //! open iot development kit runtim init
+    cJSON_InitHooks(&(cJSON_Hooks){.malloc_fn = tal_malloc, .free_fn = tal_free});
+    tal_log_init(TAL_LOG_LEVEL_DEBUG, 1024, (TAL_LOG_OUTPUT_CB)tkl_log_output);
+
+    util_set_log_level(6 /* UTIL_LOG_LV_DEBUG */);
+    PR_INFO("Aliyun SDK util log level set to DEBUG");
+
+    PR_NOTICE("Application information:");
+    PR_NOTICE("Project name:        %s", PROJECT_NAME);
+    PR_NOTICE("App version:         %s", PROJECT_VERSION);
+    PR_NOTICE("Compile time:        %s", __DATE__);
+    PR_NOTICE("TuyaOpen version:    %s", OPEN_VERSION);
+    PR_NOTICE("TuyaOpen commit-id:  %s", OPEN_COMMIT);
+    PR_NOTICE("Platform chip:       %s", PLATFORM_CHIP);
+    PR_NOTICE("Platform board:      %s", PLATFORM_BOARD);
+    PR_NOTICE("Platform commit-id:  %s", PLATFORM_COMMIT);
+
+    tal_kv_init(&(tal_kv_cfg_t){
+        .seed = "vmlkasdh93dlvlcy",
+        .key = "dflfuap134ddlduq",
+    });
+    tal_sw_timer_init();
+    tal_workq_init();
+
+#if (!defined(PLATFORM_UBUNTU) || (PLATFORM_UBUNTU == 0)) && (!(defined(ENABLE_AT_MODEM) && (ENABLE_AT_MODEM == 1)))
+    tal_cli_init();
+    tuya_authorize_init();
+    tuya_app_cli_init();
+#endif
+
+    reset_netconfig_start();
+
+    if (OPRT_OK != tuya_authorize_read(&license)) {
+        license.uuid = TUYA_OPENSDK_UUID;
+        license.authkey = TUYA_OPENSDK_AUTHKEY;
+        PR_WARN("Replace the TUYA_OPENSDK_UUID and TUYA_OPENSDK_AUTHKEY contents, otherwise the demo cannot work.\n \
+                Visit https://platform.tuya.com/purchase/index?type=6 to get the open-sdk uuid and authkey.");
+    }
+    // PR_DEBUG("uuid %s, authkey %s", license.uuid, license.authkey);
+    /* Initialize Tuya device configuration */
+    rt = tuya_iot_init(&client, &(const tuya_iot_config_t){
+                                    .software_ver = PROJECT_VERSION,
+                                    .productkey = TUYA_PRODUCT_ID,
+                                    .uuid = license.uuid,
+                                    .authkey = license.authkey,
+                                    .event_handler = user_event_handler_on,
+                                    .network_check = user_network_check,
+                                });
+    assert(rt == OPRT_OK);
+
+#if defined(ENABLE_LIBLWIP) && (ENABLE_LIBLWIP == 1)
+    TUYA_LwIP_Init();
+#endif
+
+    // network init
+    netmgr_type_e type = 0;
+#if defined(ENABLE_WIFI) && (ENABLE_WIFI == 1)
+    type |= NETCONN_WIFI;
+#endif
+#if defined(ENABLE_WIRED) && (ENABLE_WIRED == 1)
+    type |= NETCONN_WIRED;
+#endif
+#if defined(ENABLE_CELLULAR) && (ENABLE_CELLULAR == 1)
+    type |= NETCONN_CELLULAR;
+#endif
+#if defined(ENABLE_AT_MODEM) && (ENABLE_AT_MODEM == 1)
+    type |= NETCONN_AT_MODEM;
+// Initialize the AT modem connection here
+#include "tdd_transport_uart.h"
+    TDD_TRANSPORT_UART_CFG_T uart_cfg = {
+        .port_id = TUYA_UART_NUM_0,
+        .cfg.rx_buffer_size = 10 * 1024,
+        .cfg.open_mode = O_BLOCK,
+        .cfg.base_cfg =
+            {
+                .baudrate = 921600,
+                .databits = TUYA_UART_DATA_LEN_8BIT,
+                .parity = TUYA_UART_PARITY_TYPE_NONE,
+                .stopbits = TUYA_UART_STOP_LEN_1BIT,
+            },
+    };
+    TUYA_CALL_ERR_LOG(tdd_transport_uart_register(AT_TRANSPORT_NAME, uart_cfg));
+#endif
+    netmgr_init(type);
+
+#if defined(ENABLE_WIFI) && (ENABLE_WIFI == 1)
+    netmgr_conn_set(NETCONN_WIFI, NETCONN_CMD_NETCFG, &(netcfg_args_t){.type = NETCFG_TUYA_BLE | NETCFG_TUYA_WIFI_AP});
+#endif
+
+    PR_DEBUG("tuya_iot_init success");
+    /* Start tuya iot task */
+    tuya_iot_start(&client);
+
+    reset_netconfig_check();
+
+    for (;;) {
+        /* Loop to receive packets, and handles client keepalive */
+        tuya_iot_yield(&client);
+    }
+}
+
+/**
+ * @brief main
+ *
+ * @param argc
+ * @param argv
+ * @return void
+ */
+#if OPERATING_SYSTEM == SYSTEM_LINUX
+void main(int argc, char *argv[])
+{
+    user_main();
+}
+#else
+
+/* Tuya thread handle */
+static THREAD_HANDLE ty_app_thread = NULL;
+
+/**
+ * @brief  task thread
+ *
+ * @param[in] arg:Parameters when creating a task
+ * @return none
+ */
+static void tuya_app_thread(void *arg)
+{
+    user_main();
+
+    tal_thread_delete(ty_app_thread);
+    ty_app_thread = NULL;
+}
+
+void tuya_app_main(void)
+{
+    THREAD_CFG_T thrd_param = {4096, 4, "tuya_app_main"};
+    tal_thread_create_and_start(&ty_app_thread, NULL, NULL, tuya_app_thread, NULL, &thrd_param);
+}
+#endif

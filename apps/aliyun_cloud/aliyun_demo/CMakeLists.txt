@@ -9,42 +9,32 @@ set(APP_PATH ${CMAKE_CURRENT_LIST_DIR})
 # APP_NAME
 get_filename_component(APP_NAME ${APP_PATH} NAME)
 
-# APP_SRC
-aux_source_directory(${APP_PATH}/src APP_SRC)
-
-# APP_INC
-set(APP_INC ${APP_PATH}/include)
-
-# APP_OPTIONS
-set(APP_OPTIONS "")  # -W
+# APP_SRCS
+aux_source_directory(${APP_PATH}/src APP_SRCS)
 
 ########################################
 # Target Configure
 ########################################
 add_library(${EXAMPLE_LIB})
-message(STATUS "EXAMPLE_LIB:${APP_PATH}")
 
 target_sources(${EXAMPLE_LIB}
     PRIVATE
-        ${APP_SRC}
+        ${APP_SRCS}
     )
 
 target_include_directories(${EXAMPLE_LIB}
     PRIVATE
         ${APP_INC}
-        ${CMAKE_SOURCE_DIR}/src/libaliyun_sdk/include
+        ${APP_PATH}/include
+        ${TOP_SOURCE_DIR}/src/libaliyun_sdk/include
     )
 
-target_compile_options(${EXAMPLE_LIB}
-    PRIVATE
-        ${APP_OPTIONS}
-    )
-
-# Link with libaliyun_sdk and the specified static test library
+# Link with the libaliyun_sdk module (which includes sdk_test functionality)
 target_link_libraries(${EXAMPLE_LIB} 
     libaliyun_sdk
-    ${APP_PATH}/libsdk_test.a
 )
 
-
-# Test library is now available in platform's lib directory
+# Make sure the prebuilt lib is available in the platform lib search dir and included by name
+file(COPY ${TOP_SOURCE_DIR}/src/libaliyun_sdk/prebuilt_libs/libsdk_test.a
+     DESTINATION ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY})
+set(PLATFORM_NEED_LIBS "${PLATFORM_NEED_LIBS} sdk_test")
