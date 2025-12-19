@@ -226,10 +226,18 @@ static OPERATE_RET __board_register_display(void)
     eink_cfg.busy_pin = BOARD_EINK_SPI_BUSY_PIN; // No busy pin connected
 
     // Set power pin to MAX to indicate no power control (prevents GPIO 0 init)
-    eink_cfg.power.pin = TUYA_GPIO_NUM_MAX;
+    eink_cfg.power.pin          = TUYA_GPIO_NUM_MAX;
+    eink_cfg.power.active_level = TUYA_GPIO_LEVEL_HIGH;
 
     // Set backlight pin to MAX to indicate no backlight control
-    eink_cfg.bl.gpio.pin = TUYA_GPIO_NUM_MAX;
+    // eink_cfg.bl.gpio.pin               = TUYA_GPIO_NUM_MAX;
+    eink_cfg.bl.type               = TUYA_DISP_BL_TP_PWM;
+    eink_cfg.bl.pwm.id             = TUYA_PWM_NUM_9;
+    eink_cfg.bl.pwm.cfg.frequency  = 1000;              // PWM frequency in Hz
+    eink_cfg.bl.pwm.cfg.duty       = 5000;              // Duty value (for 50%: duty=5000, cycle=10000)
+    eink_cfg.bl.pwm.cfg.cycle      = 10000;             // Cycle value
+    eink_cfg.bl.pwm.cfg.polarity   = TUYA_PWM_POSITIVE; // Normal polarity
+    eink_cfg.bl.pwm.cfg.count_mode = TUYA_PWM_CNT_UP;   // Count up mode
 
     TUYA_CALL_ERR_RETURN(tdd_disp_spi_mono_uc8276_register(DISPLAY_NAME, &eink_cfg));
 

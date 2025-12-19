@@ -20,8 +20,10 @@
 #define EPD_HEIGHT 300
 
 typedef struct {
-    DISP_SPI_BASE_CFG_T cfg;
-    TUYA_GPIO_NUM_E     busy_pin;
+    DISP_SPI_BASE_CFG_T    cfg;
+    TUYA_GPIO_NUM_E        busy_pin;
+    TUYA_DISPLAY_IO_CTRL_T power;       /* Power control pin */
+    bool                   is_sleeping; /* Track sleep state */
 } DISP_UC8276_DEV_T;
 
 /*****************************************************************************
@@ -174,11 +176,43 @@ static void __epd_display(DISP_UC8276_DEV_T *dev, const uint8_t *data, uint32_t 
     __update_display(dev);
 }
 
+/* Wake EPD from sleep (power on and reinitialize) */
+static void __epd_wake(DISP_UC8276_DEV_T *dev)
+{
+    if (!dev->is_sleeping) {
+        return; /* Already awake */
+    }
+
+    /* Power on if power control pin is available */
+    if (dev->power.pin < TUYA_GPIO_NUM_MAX) {
+        tkl_gpio_write(dev->power.pin, TUYA_GPIO_LEVEL_HIGH);
+        __delay_ms(100);
+    }
+
+    /* Reinitialize display after power on */
+    __epd_init(dev);
+    dev->is_sleeping = false;
+}
+
+/* Put EPD to sleep (power off) */
 static void __epd_sleep(DISP_UC8276_DEV_T *dev)
 {
+    if (dev->is_sleeping) {
+        return; /* Already sleeping */
+    }
+
+    /* Send deep sleep command */
     __send_cmd(dev, 0x10);
     __send_data(dev, 0x01);
     __delay_ms(100);
+
+    /* Power off if power control pin is available */
+    if (dev->power.pin < TUYA_GPIO_NUM_MAX) {
+        tkl_gpio_write(dev->power.pin, TUYA_GPIO_LEVEL_LOW);
+        __delay_ms(10);
+    }
+
+    dev->is_sleeping = true;
 }
 
 /*****************************************************************************
@@ -207,7 +241,19 @@ static OPERATE_RET __tdd_disp_open(TDD_DISP_DEV_HANDLE_T device)
         tkl_gpio_init(dev->busy_pin, &gpio_cfg);
     }
 
-    __epd_init(dev);
+    /* Initialize power control pin if available */
+    if (dev->power.pin < TUYA_GPIO_NUM_MAX) {
+        TUYA_GPIO_BASE_CFG_T gpio_cfg = {
+            .mode   = TUYA_GPIO_PULLUP,
+            .direct = TUYA_GPIO_OUTPUT,
+            .level  = TUYA_GPIO_LEVEL_HIGH,
+        };
+        tkl_gpio_init(dev->power.pin, &gpio_cfg);
+        __delay_ms(50);
+    }
+
+    /* Wake display from sleep (power on and initialize) */
+    __epd_wake(dev);
     __epd_clear(dev);
 
     PR_NOTICE("EPD: initialized");
@@ -239,6 +285,7 @@ static OPERATE_RET __tdd_disp_close(TDD_DISP_DEV_HANDLE_T device)
         return OPRT_INVALID_PARM;
     }
 
+    /* Put display to sleep (power off) */
     __epd_sleep(dev);
     return OPRT_OK;
 }
@@ -274,6 +321,8 @@ OPERATE_RET tdd_disp_spi_mono_uc8276_register(char *name, DISP_EINK_UC8276_CFG_T
     disp_dev->cfg.dc_pin    = dev_cfg->dc_pin;
     disp_dev->cfg.rst_pin   = dev_cfg->rst_pin;
     disp_dev->busy_pin      = dev_cfg->busy_pin;
+    disp_dev->power         = dev_cfg->power;
+    disp_dev->is_sleeping   = true; /* Start in sleep state */
 
     /* Fill device info */
     TDD_DISP_DEV_INFO_T disp_dev_info = {
