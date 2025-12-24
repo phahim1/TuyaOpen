@@ -18,6 +18,7 @@
 #include "app_hardware.h"
 #include "app_lvgl.h"
 #include "app_input.h"
+#include "app_sdcard_demo.h"
 #include "lv_vendor.h"
 #include <stdio.h>
 #include <stdbool.h>
@@ -39,13 +40,19 @@
 /***********************************************************
 ***********************variable define**********************
 ***********************************************************/
-static lv_obj_t *sg_key_status_label = NULL;
+static lv_obj_t *sg_key_status_label      = NULL;
+static lv_obj_t *sg_sdcard_status_label   = NULL;
+static lv_obj_t *sg_sdcard_progress_label = NULL;
+static lv_obj_t *sg_sdcard_result_label   = NULL;
 
 /***********************************************************
 ********************function declaration********************
 ***********************************************************/
 static void create_demo_screen(void);
 static void update_key_status_text(const char *key_name, bool pressed);
+static void update_sdcard_status(const char *status_text);
+static void update_sdcard_progress(const char *step_name, uint32_t percent);
+static void update_sdcard_result(const char *test_name, float write_speed, float read_speed);
 
 /***********************************************************
 ***********************function define**********************
@@ -74,6 +81,66 @@ static void update_key_status_text(const char *key_name, bool pressed)
 }
 
 /**
+ * @brief Update SD card status on UI
+ */
+static void update_sdcard_status(const char *status_text)
+{
+    if (sg_sdcard_status_label == NULL || status_text == NULL) {
+        return;
+    }
+
+    // Lock display before updating UI (thread safety)
+    lv_vendor_disp_lock();
+    lv_label_set_text(sg_sdcard_status_label, status_text);
+    lv_vendor_disp_unlock();
+}
+
+/**
+ * @brief Update SD card progress on UI
+ */
+static void update_sdcard_progress(const char *step_name, uint32_t percent)
+{
+    if (sg_sdcard_progress_label == NULL) {
+        return;
+    }
+
+    char progress_text[128];
+    if (step_name != NULL) {
+        snprintf(progress_text, sizeof(progress_text), "%s: %lu%%", step_name, (unsigned long)percent);
+    } else {
+        snprintf(progress_text, sizeof(progress_text), "Progress: %lu%%", (unsigned long)percent);
+    }
+
+    // Lock display before updating UI (thread safety)
+    lv_vendor_disp_lock();
+    lv_label_set_text(sg_sdcard_progress_label, progress_text);
+    lv_vendor_disp_unlock();
+}
+
+/**
+ * @brief Update SD card test results on UI
+ */
+static void update_sdcard_result(const char *test_name, float write_speed, float read_speed)
+{
+    if (sg_sdcard_result_label == NULL) {
+        return;
+    }
+
+    char result_text[256];
+    if (test_name != NULL) {
+        snprintf(result_text, sizeof(result_text), "%s\nWrite: %.2f MB/s\nRead: %.2f MB/s", test_name, write_speed,
+                 read_speed);
+    } else {
+        snprintf(result_text, sizeof(result_text), "Write: %.2f MB/s\nRead: %.2f MB/s", write_speed, read_speed);
+    }
+
+    // Lock display before updating UI (thread safety)
+    lv_vendor_disp_lock();
+    lv_label_set_text(sg_sdcard_result_label, result_text);
+    lv_vendor_disp_unlock();
+}
+
+/**
  * @brief Create a simple demo screen to test LVGL and input
  */
 static void create_demo_screen(void)
@@ -82,13 +149,38 @@ static void create_demo_screen(void)
     lv_obj_t *title_label = lv_label_create(lv_scr_act());
     lv_label_set_text(title_label, "Badge Template");
     lv_obj_set_style_text_align(title_label, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, 20);
+    lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, 10);
+
+    // Create SD card status label
+    sg_sdcard_status_label = lv_label_create(lv_scr_act());
+    if (app_sdcard_is_mounted()) {
+        const char *mount_path = app_sdcard_get_mount_path();
+        char        status[128];
+        snprintf(status, sizeof(status), "SD Card: %s\nStatus: Mounted", mount_path);
+        lv_label_set_text(sg_sdcard_status_label, status);
+    } else {
+        lv_label_set_text(sg_sdcard_status_label, "SD Card: Not Mounted");
+    }
+    lv_obj_set_style_text_align(sg_sdcard_status_label, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_align(sg_sdcard_status_label, LV_ALIGN_TOP_MID, 0, 40);
+
+    // Create SD card progress label
+    sg_sdcard_progress_label = lv_label_create(lv_scr_act());
+    lv_label_set_text(sg_sdcard_progress_label, "Progress: Waiting...");
+    lv_obj_set_style_text_align(sg_sdcard_progress_label, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_align(sg_sdcard_progress_label, LV_ALIGN_TOP_MID, 0, 80);
+
+    // Create SD card result label
+    sg_sdcard_result_label = lv_label_create(lv_scr_act());
+    lv_label_set_text(sg_sdcard_result_label, "Test Results:\nWaiting...");
+    lv_obj_set_style_text_align(sg_sdcard_result_label, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_align(sg_sdcard_result_label, LV_ALIGN_TOP_MID, 0, 120);
 
     // Create key status label that will be updated on button press/release
     sg_key_status_label = lv_label_create(lv_scr_act());
     lv_label_set_text(sg_key_status_label, "Key: None\nStatus: RELEASED");
     lv_obj_set_style_text_align(sg_key_status_label, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_center(sg_key_status_label);
+    lv_obj_align(sg_key_status_label, LV_ALIGN_BOTTOM_MID, 0, -60);
 
     // Create instruction label
     lv_obj_t *info_label = lv_label_create(lv_scr_act());
@@ -155,6 +247,36 @@ void user_main(void)
 
     PR_NOTICE("Badge template initialized successfully");
     PR_NOTICE("You can now start building your application!");
+
+    // Register SD card demo UI callbacks
+    app_sdcard_demo_set_status_callback(update_sdcard_status);
+    app_sdcard_demo_set_progress_callback(update_sdcard_progress);
+    app_sdcard_demo_set_result_callback(update_sdcard_result);
+
+    // Run SD card demo if SD card is mounted
+    if (app_sdcard_is_mounted()) {
+        PR_NOTICE("\n=== Starting SD Card Demo ===");
+        tal_system_sleep(1000); // Wait a bit before starting demo
+
+        rt = app_sdcard_demo_run_all();
+        if (OPRT_OK == rt) {
+            PR_NOTICE("SD card demo completed successfully");
+        } else {
+            PR_ERR("SD card demo failed: %d", rt);
+            if (sg_sdcard_status_label != NULL) {
+                lv_vendor_disp_lock();
+                lv_label_set_text(sg_sdcard_status_label, "Error: Demo failed");
+                lv_vendor_disp_unlock();
+            }
+        }
+    } else {
+        PR_NOTICE("SD card not mounted, skipping SD card demo");
+        if (sg_sdcard_status_label != NULL) {
+            lv_vendor_disp_lock();
+            lv_label_set_text(sg_sdcard_status_label, "SD Card: Not Mounted\nPlease insert SD card");
+            lv_vendor_disp_unlock();
+        }
+    }
 
     // Main loop - keep thread alive
     // LVGL runs in its own thread via lv_vendor_start(), but we keep this thread alive

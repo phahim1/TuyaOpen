@@ -65,7 +65,7 @@ static void button_callback(char *name, TDL_BUTTON_TOUCH_EVENT_E event, void *ar
     const char *key_name = "UNKNOWN";
 
     // Handle button press and release events
-    if (event == TDL_BUTTON_PRESS_SINGLE_CLICK || event == TDL_BUTTON_PRESS_DOWN) {
+    if (event == TDL_BUTTON_PRESS_DOWN) {
         // Find matching button and set corresponding LVGL key
         for (i = 0; i < sizeof(button_key_map) / sizeof(button_key_map[0]); i++) {
             if (strcmp(name, button_key_map[i].button_name) == 0) {
