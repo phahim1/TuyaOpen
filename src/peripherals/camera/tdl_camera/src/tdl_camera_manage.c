@@ -1,7 +1,14 @@
 /**
  * @file tdl_camera_manage.c
- * @version 0.1
+ * @brief Camera device management module
+ *
+ * This module provides camera device management functionality, including
+ * device registration, frame buffer management, raw and encoded frame
+ * processing, and callback handling. It supports multiple camera devices
+ * and manages frame queues with separate threads for raw and encoded frames.
+ *
  * @copyright Copyright (c) 2021-2025 Tuya Inc. All Rights Reserved.
+ *
  */
 
 #include "tuya_cloud_types.h"
@@ -20,7 +27,7 @@
 #define CAMERA_ENCODE_FRAME_BUFF_CNT        (CAMERA_RAW_FRAME_BUFF_CNT << 2)
 
 #define CAMERA_RAW_PER_PIXEL_MAX_BYTE       (3)
-#define CAMERA_ENCODE_MIN_COMP_PCT          (20) // uint:ENCODE
+#define CAMERA_ENCODE_MIN_COMP_PCT          (20) // Unit: percentage
 
 #if defined(ENABLE_EXT_RAM) && (ENABLE_EXT_RAM==1)
 #define TDL_CAMERA_FRAME_MALLOC    tal_psram_malloc
@@ -76,6 +83,11 @@ static CAMERA_MANAGE_INFO_T sg_camera_manage;
 /***********************************************************
 ***********************function define**********************
 ***********************************************************/
+/**
+ * @brief Find camera device by name
+ * @param name Camera device name
+ * @return Pointer to camera device structure, or NULL if not found
+ */
 static CAMERA_DEVICE_T *__find_camera_device(char *name)
 {
     CAMERA_DEVICE_T *camera_dev = NULL;
@@ -96,6 +108,11 @@ static CAMERA_DEVICE_T *__find_camera_device(char *name)
     return NULL;
 }
 
+/**
+ * @brief Find camera device by TDD handle
+ * @param tdd_hdl TDD camera device handle
+ * @return Pointer to camera device structure, or NULL if not found
+ */
 static CAMERA_DEVICE_T *__find_camera_device_from_tdd(TDD_CAMERA_DEV_HANDLE_T tdd_hdl)
 {
     CAMERA_DEVICE_T *camera_dev = NULL;
@@ -116,6 +133,11 @@ static CAMERA_DEVICE_T *__find_camera_device_from_tdd(TDD_CAMERA_DEV_HANDLE_T td
     return NULL;
 }
 
+/**
+ * @brief Check if frame format is encoded
+ * @param fmt Frame format enumeration
+ * @return true if frame format is encoded (JPEG/H264), false otherwise
+ */
 static bool __is_camera_frame_encoded(TUYA_FRAME_FMT_E fmt)
 {
     bool is_encoded = false;
@@ -139,6 +161,14 @@ static bool __is_camera_frame_encoded(TUYA_FRAME_FMT_E fmt)
 	return is_encoded;
 }
 
+/**
+ * @brief Initialize camera frame node list
+ * @param phead Pointer to list head
+ * @param node_num Number of frame nodes to create
+ * @param buf_len Buffer length for each frame node
+ * @return OPRT_OK on success, OPRT_INVALID_PARM if parameters are invalid,
+ *         OPRT_MALLOC_FAILED on memory allocation failure
+ */
 static OPERATE_RET __camera_frame_node_init(struct tuya_list_head *phead, uint32_t node_num,\
                                             uint32_t buf_len)
 {
@@ -165,13 +195,16 @@ static OPERATE_RET __camera_frame_node_init(struct tuya_list_head *phead, uint32
         frame_node->tdd_frame.sys_param = (void *)frame_node;
 
         tuya_list_add(&frame_node->node, phead);
-
-        PR_NOTICE("frame node %p, frame_data %p", frame_node, frame_node->tdd_frame.frame.data);
     }
 
     return OPRT_OK;
 }
 
+/**
+ * @brief Raw frame processing task
+ * @brief Continuously processes raw frames from queue and calls registered callback
+ * @param args Task arguments (unused)
+ */
 static void __raw_flow_task(void *args)
 {
     CAMERA_MSG_T msg;
@@ -192,6 +225,11 @@ static void __raw_flow_task(void *args)
 	}
 }
 
+/**
+ * @brief Encoded frame processing task
+ * @brief Continuously processes encoded frames from queue and calls registered callback
+ * @param args Task arguments (unused)
+ */
 static void __encoded_flow_task(void *args)
 {
     CAMERA_MSG_T msg;
@@ -211,6 +249,12 @@ static void __encoded_flow_task(void *args)
 	}
 }
 
+/**
+ * @brief Initialize camera management system
+ * @brief Creates frame queues and processing threads based on output format requirements
+ * @param out_fmt Output format mask (raw and/or encoded)
+ * @return OPRT_OK on success, error code otherwise
+ */
 static OPERATE_RET __camera_manage_init(TDL_CAMERA_FMT_E out_fmt)
 {
     OPERATE_RET rt;
@@ -222,7 +266,7 @@ static OPERATE_RET __camera_manage_init(TDL_CAMERA_FMT_E out_fmt)
         }
     
         if(NULL == sg_camera_manage.raw_thrd) {
-            THREAD_CFG_T thread_cfg = {4096, THREAD_PRIO_1, "raw_flow_task"};
+            THREAD_CFG_T thread_cfg = {8192, THREAD_PRIO_1, "raw_flow_task"};
             TUYA_CALL_ERR_RETURN(tal_thread_create_and_start(&(sg_camera_manage.raw_thrd), NULL, NULL,\
                                                              __raw_flow_task, NULL, &thread_cfg));
         }
@@ -235,7 +279,7 @@ static OPERATE_RET __camera_manage_init(TDL_CAMERA_FMT_E out_fmt)
         }
     
         if(NULL == sg_camera_manage.encoded_thrd) {
-            THREAD_CFG_T thread_cfg = {4096, THREAD_PRIO_1, "encoded_flow_task"};
+            THREAD_CFG_T thread_cfg = {8192, THREAD_PRIO_1, "encoded_flow_task"};
             TUYA_CALL_ERR_RETURN(tal_thread_create_and_start(&(sg_camera_manage.encoded_thrd), NULL, NULL,\
                                                              __encoded_flow_task, NULL, &thread_cfg));
         }
@@ -244,11 +288,22 @@ static OPERATE_RET __camera_manage_init(TDL_CAMERA_FMT_E out_fmt)
     return OPRT_OK;
 }
 
+/**
+ * @brief Find camera device by name
+ * @param name Camera device name
+ * @return Camera handle if found, NULL otherwise
+ */
 TDL_CAMERA_HANDLE_T tdl_camera_find_dev(char *name)
 {
     return (TDL_CAMERA_HANDLE_T)__find_camera_device(name);
 }
 
+/**
+ * @brief Get camera device information
+ * @param camera_hdl Camera handle
+ * @param dev_info Pointer to store device information
+ * @return OPRT_OK on success, OPRT_INVALID_PARM if parameters are invalid
+ */
 OPERATE_RET tdl_camera_dev_get_info(TDL_CAMERA_HANDLE_T camera_hdl, TDL_CAMERA_DEV_INFO_T *dev_info)
 {
     CAMERA_DEVICE_T *camera_dev = (CAMERA_DEVICE_T *)camera_hdl;
@@ -262,6 +317,14 @@ OPERATE_RET tdl_camera_dev_get_info(TDL_CAMERA_HANDLE_T camera_hdl, TDL_CAMERA_D
     return OPRT_OK;
 }
 
+/**
+ * @brief Open camera device with specified configuration
+ * @brief Initializes frame buffers, sets up callbacks, and opens the camera device
+ * @param camera_hdl Camera handle
+ * @param cfg Pointer to camera configuration structure
+ * @return OPRT_OK on success, OPRT_INVALID_PARM if parameters are invalid,
+ *         or other error codes on initialization failure
+ */
 OPERATE_RET tdl_camera_dev_open(TDL_CAMERA_HANDLE_T camera_hdl,  TDL_CAMERA_CFG_T *cfg)
 {
     OPERATE_RET rt = OPRT_OK;
@@ -314,11 +377,26 @@ OPERATE_RET tdl_camera_dev_open(TDL_CAMERA_HANDLE_T camera_hdl,  TDL_CAMERA_CFG_
     return OPRT_OK;
 }
 
+/**
+ * @brief Close camera device
+ * @param camera_hdl Camera handle
+ * @return OPRT_NOT_SUPPORTED (function not implemented)
+ */
 OPERATE_RET tdl_camera_dev_close(TDL_CAMERA_HANDLE_T camera_hdl)
 {
     return OPRT_NOT_SUPPORTED;
 }
 
+/**
+ * @brief Register a camera device
+ * @brief Creates and registers a new camera device with the management system
+ * @param name Camera device name
+ * @param tdd_hdl TDD camera device handle
+ * @param intfs Pointer to camera interface functions structure
+ * @param dev_info Pointer to camera device information structure
+ * @return OPRT_OK on success, OPRT_INVALID_PARM if parameters are invalid,
+ *         OPRT_MALLOC_FAILED on memory allocation failure
+ */
 OPERATE_RET tdl_camera_device_register(char *name, TDD_CAMERA_DEV_HANDLE_T tdd_hdl, \
                                        TDD_CAMERA_INTFS_T *intfs, TDD_CAMERA_DEV_INFO_T *dev_info)
 {
@@ -357,6 +435,13 @@ OPERATE_RET tdl_camera_device_register(char *name, TDD_CAMERA_DEV_HANDLE_T tdd_h
     return OPRT_OK;
 }
 
+/**
+ * @brief Create a TDD frame from frame node pool
+ * @brief Allocates a frame from the appropriate pool (raw or encoded) based on format
+ * @param tdd_hdl TDD camera device handle
+ * @param fmt Frame format enumeration
+ * @return Pointer to TDD frame structure, or NULL if no frame available or device not found
+ */
 TDD_CAMERA_FRAME_T *tdl_camera_create_tdd_frame(TDD_CAMERA_DEV_HANDLE_T tdd_hdl, TUYA_FRAME_FMT_E fmt)
 {
     CAMERA_DEVICE_T *camera_dev = NULL;
@@ -389,6 +474,12 @@ TDD_CAMERA_FRAME_T *tdl_camera_create_tdd_frame(TDD_CAMERA_DEV_HANDLE_T tdd_hdl,
     return &pnode->tdd_frame;
 }
 
+/**
+ * @brief Release TDD frame back to frame node pool
+ * @brief Returns a frame to the appropriate pool (raw or encoded) and resets frame data
+ * @param tdd_hdl TDD camera device handle
+ * @param frame Pointer to TDD frame structure to release
+ */
 void tdl_camera_release_tdd_frame(TDD_CAMERA_DEV_HANDLE_T tdd_hdl, TDD_CAMERA_FRAME_T *frame)
 {    
     CAMERA_DEVICE_T *camera_dev = NULL;
@@ -429,6 +520,14 @@ void tdl_camera_release_tdd_frame(TDD_CAMERA_DEV_HANDLE_T tdd_hdl, TDD_CAMERA_FR
     return;
 }
 
+/**
+ * @brief Post TDD frame to processing queue
+ * @brief Sends a frame to the appropriate processing queue (raw or encoded) for callback handling
+ * @param tdd_hdl TDD camera device handle
+ * @param frame Pointer to TDD frame structure to post
+ * @return OPRT_OK on success, OPRT_INVALID_PARM if parameters are invalid,
+ *         OPRT_COM_ERROR if queue or device not found
+ */
 OPERATE_RET tdl_camera_post_tdd_frame(TDD_CAMERA_DEV_HANDLE_T tdd_hdl, TDD_CAMERA_FRAME_T *frame)
 {
     CAMERA_MSG_T msg;

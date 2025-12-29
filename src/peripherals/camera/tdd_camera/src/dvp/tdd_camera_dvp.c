@@ -1,7 +1,13 @@
 /**
  * @file tdd_camera_dvp.c
- * @version 0.1
+ * @brief DVP (Digital Video Port) camera driver implementation
+ *
+ * This file implements the DVP camera driver, including frame buffer management,
+ * DVP hardware initialization, camera device registration, and frame processing
+ * callbacks. It provides the core functionality for DVP camera sensor integration.
+ *
  * @copyright Copyright (c) 2021-2025 Tuya Inc. All Rights Reserved.
+ *
  */
 
 #include "tuya_cloud_types.h"
@@ -34,6 +40,11 @@ static CAMERA_DVP_DEV_T *sg_dvp_dev = NULL;
 /***********************************************************
 ***********************function define**********************
 ***********************************************************/
+/**
+ * @brief Allocate frame buffer for DVP frame management
+ * @param fmt Frame format enumeration
+ * @return Pointer to DVP frame management structure, or NULL on failure
+ */
 static TUYA_DVP_FRAME_MANAGE_T *__tdd_dvp_frame_manage_malloc(TUYA_FRAME_FMT_E fmt)
 {
     TDD_CAMERA_FRAME_T *tdd_frame;
@@ -63,7 +74,12 @@ __EXIT:
     return dvp_frame;
 }
 
-//! WARNING: This is hardware interrupt handler for T5, do not use PR_xxx here!
+/**
+ * @brief Frame post handler for DVP hardware interrupt
+ * @brief WARNING: This is hardware interrupt handler for T5, do not use PR_xxx here!
+ * @param dvp_frame Pointer to DVP frame management structure
+ * @return OPRT_OK on success, OPRT_INVALID_PARM if parameters are invalid
+ */
 static OPERATE_RET __tdd_dvp_frame_post_handler(TUYA_DVP_FRAME_MANAGE_T *dvp_frame)
 {
     TDD_CAMERA_FRAME_T *tdd_frame = NULL;
@@ -85,6 +101,12 @@ static OPERATE_RET __tdd_dvp_frame_post_handler(TUYA_DVP_FRAME_MANAGE_T *dvp_fra
     return tdl_camera_post_tdd_frame((TDD_CAMERA_DEV_HANDLE_T)sg_dvp_dev, (TDD_CAMERA_FRAME_T *)dvp_frame->arg);
 }
 
+/**
+ * @brief Initialize DVP camera device
+ * @param dev Pointer to DVP camera device structure
+ * @param cfg Pointer to camera open configuration structure
+ * @return OPRT_OK on success, OPRT_INVALID_PARM if parameters are invalid
+ */
 static OPERATE_RET __tdd_camera_dvp_init(CAMERA_DVP_DEV_T *dev, TDD_CAMERA_OPEN_CFG_T *cfg) 
 {
     OPERATE_RET rt = OPRT_OK;
@@ -125,6 +147,12 @@ static OPERATE_RET __tdd_camera_dvp_init(CAMERA_DVP_DEV_T *dev, TDD_CAMERA_OPEN_
     return OPRT_OK;
 }
 
+/**
+ * @brief Open DVP camera device
+ * @param device DVP camera device handle
+ * @param cfg Pointer to camera open configuration structure
+ * @return OPRT_OK on success, error code otherwise
+ */
 static OPERATE_RET __tdd_camera_dvp_open(TDD_CAMERA_DEV_HANDLE_T device, TDD_CAMERA_OPEN_CFG_T *cfg)
 {
     OPERATE_RET rt = OPRT_OK;
@@ -170,11 +198,24 @@ static OPERATE_RET __tdd_camera_dvp_open(TDD_CAMERA_DEV_HANDLE_T device, TDD_CAM
     return rt;
 }
 
+/**
+ * @brief Close DVP camera device
+ * @param device DVP camera device handle
+ * @return OPRT_NOT_SUPPORTED (function not implemented)
+ */
 static OPERATE_RET __tdd_camera_dvp_close(TDD_CAMERA_DEV_HANDLE_T device)
 {
     return OPRT_NOT_SUPPORTED;
 }
 
+/**
+ * @brief Register a DVP camera device
+ * @param name Camera device name
+ * @param sr_cfg Pointer to DVP sensor configuration structure
+ * @param sr_intfs Pointer to DVP sensor interface functions structure
+ * @return OPRT_OK on success, OPRT_INVALID_PARM if parameters are invalid,
+ *         OPRT_MALLOC_FAILED on memory allocation failure
+ */
 OPERATE_RET tdl_camera_dvp_device_register(char *name, TDD_DVP_SR_CFG_T *sr_cfg, TDD_DVP_SR_INTFS_T *sr_intfs)
 {
     CAMERA_DVP_DEV_T *dvp_dev = NULL;
