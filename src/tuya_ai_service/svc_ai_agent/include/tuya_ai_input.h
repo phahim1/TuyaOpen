@@ -58,7 +58,7 @@ typedef struct {
     /** send packet type */
     AI_PACKET_PT type;
     /** need used in multi session*/
-    BOOL_T multi_session;
+    bool multi_session;
     /** send channel get cb */
     AI_BIZ_SEND_GET_CB get_cb;
     /** send channel free cb */
@@ -74,20 +74,20 @@ typedef struct {
  * @brief ai input start
  * @param[in] force force start new session(break old session)
  */
-VOID tuya_ai_input_start(BOOL_T force);
+void tuya_ai_input_start(bool force);
 
 /**
  * @brief get ai input state
  *
  * @return AI_INPUT_STATE_E
  */
-AI_INPUT_STATE_E tuya_ai_input_get_state(VOID);
+AI_INPUT_STATE_E tuya_ai_input_get_state(void);
 
 /**
  * @brief ai input stop
 *
  */
-VOID tuya_ai_input_stop(VOID);
+void tuya_ai_input_stop(void);
 
 /**
  * @brief ai video input
@@ -165,7 +165,7 @@ OPERATE_RET tuya_ai_file_input(BYTE_T *data, UINT_T len, UINT_T total_len);
 typedef INT_T AI_CLOUD_ALERT_TYPE_E;
 #define AI_ALERT_PLAY_ID    "ai-alert"
 #define AI_ALERT_PLAY_ID_LEN (sizeof(AI_ALERT_PLAY_ID) - 1)
-typedef VOID_T(*AI_ALERT_FB_CB)(AI_CLOUD_ALERT_TYPE_E type);
+typedef void(*AI_ALERT_FB_CB)(AI_CLOUD_ALERT_TYPE_E type);
 
 /**
  * @brief ai input alert
@@ -184,5 +184,5 @@ OPERATE_RET tuya_ai_input_alert(AI_CLOUD_ALERT_TYPE_E type, AI_ALERT_FB_CB cb);
  *
  * @return TRUE started, FALSE not started
  */
-BOOL_T tuya_ai_input_is_started(VOID);
+bool tuya_ai_input_is_started(void);
 #endif // __TUYA_AI_INPUT_H__

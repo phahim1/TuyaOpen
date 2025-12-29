@@ -64,7 +64,7 @@ STATIC OPERATE_RET __ai_mq_do_interrupt(ty_cJSON *root)
         AI_ATTRIBUTE_T attr[] = {{
                 .type = 1008,
                 .payload_type = ATTR_PT_STR,
-                .length = strlen(tmp),
+                .length = strlen(tmp) + 1,
                 .value.str = tmp,
             }
         };

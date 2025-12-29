@@ -52,7 +52,7 @@ typedef enum {
 } AI_OUTPUT_STATUS_E;
 
 typedef struct {
-    CHAR_T *scode;
+    char *scode;
     AI_OUTPUT_CBS_T cbs;
     AI_OUTPUT_CBS_MODE_E mode;
     LIST_HEAD node;
@@ -65,18 +65,18 @@ typedef struct {
     AI_OUTPUT_STATUS_E status;
     TUYA_RINGBUFF_T ringbuf;
     MUTEX_HANDLE mutex;
-    CHAR_T *output_buf;
+    char *output_buf;
     UINT32_T offset;
-    BOOL_T terminate;
+    bool terminate;
 } AUDIO_PLAYER_CTX_T;
 STATIC AUDIO_PLAYER_CTX_T ai_output_ctx;
 
-VOID tuya_ai_output_deinit(VOID)
+void tuya_ai_output_deinit(void)
 {
     ai_output_ctx.terminate = TRUE;
 }
 
-STATIC VOID __ai_output_free(VOID)
+STATIC void __ai_output_free(void)
 {
     if (ai_output_ctx.thread) {
         tal_thread_delete(ai_output_ctx.thread);
@@ -98,7 +98,7 @@ STATIC VOID __ai_output_free(VOID)
     PR_DEBUG("ai output deinit");
 }
 
-STATIC VOID __ai_output_thread(void* arg)
+STATIC void __ai_output_thread(void* arg)
 {
     OPERATE_RET rt = OPRT_OK;
     AI_OUTPUT_STATUS_E cur_state = AI_OUTPUT_STOPPED;
@@ -252,7 +252,7 @@ OPERATE_RET tuya_ai_output_event(AI_EVENT_TYPE etype, AI_PACKET_PT ptype, AI_EVE
     return rt;
 }
 
-OPERATE_RET tuya_ai_output_start(VOID)
+OPERATE_RET tuya_ai_output_start(void)
 {
     OPERATE_RET rt = OPRT_OK;
 
@@ -272,7 +272,7 @@ OPERATE_RET tuya_ai_output_start(VOID)
     return rt;
 }
 
-OPERATE_RET tuya_ai_output_attr(CHAR_T *scode, AI_BIZ_ATTR_INFO_T *attr)
+OPERATE_RET tuya_ai_output_attr(char *scode, AI_BIZ_ATTR_INFO_T *attr)
 {
     LIST_HEAD *pos;
 
@@ -313,7 +313,7 @@ OPERATE_RET tuya_ai_output_alert(AI_ALERT_TYPE_E type)
     return OPRT_OK;
 }
 
-OPERATE_RET tuya_ai_output_text(CHAR_T *scode, AI_TEXT_TYPE_E type, ty_cJSON *root, BOOL_T eof)
+OPERATE_RET tuya_ai_output_text(char *scode, AI_TEXT_TYPE_E type, cJSON *root, bool eof)
 {
     LIST_HEAD *pos;
 
@@ -335,7 +335,7 @@ OPERATE_RET tuya_ai_output_text(CHAR_T *scode, AI_TEXT_TYPE_E type, ty_cJSON *ro
     return OPRT_OK;
 }
 
-OPERATE_RET tuya_ai_output_media(CHAR_T *scode, AI_PACKET_PT type, CHAR_T *data, UINT_T len, UINT_T total_len)
+OPERATE_RET tuya_ai_output_media(char *scode, AI_PACKET_PT type, char *data, UINT_T len, UINT_T total_len)
 {
     LIST_HEAD *pos;
 
@@ -357,7 +357,7 @@ OPERATE_RET tuya_ai_output_media(CHAR_T *scode, AI_PACKET_PT type, CHAR_T *data,
     return OPRT_OK;
 }
 
-OPERATE_RET tuya_ai_output_stop(BOOL_T force)
+OPERATE_RET tuya_ai_output_stop(bool force)
 {
     OPERATE_RET rt = OPRT_OK;
     PR_DEBUG("[output] stop. force:%d status:%d", force, ai_output_ctx.status);
@@ -413,13 +413,13 @@ OPERATE_RET tuya_ai_output_write(AI_PACKET_PT type, UINT8_T *data, UINT_T len)
     return OPRT_OK;
 }
 
-BOOL_T tuya_ai_output_is_playing(VOID)
+bool tuya_ai_output_is_playing(void)
 {
     return (ai_output_ctx.status == AI_OUTPUT_PLAYING) || (ai_output_ctx.status == AI_OUTPUT_STOPPING);
 }
 
 /* register external cbs with scode */
-OPERATE_RET tuya_ai_output_register_cbs(CHAR_T *scode, AI_OUTPUT_CBS_T *cbs, AI_OUTPUT_CBS_MODE_E mode)
+OPERATE_RET tuya_ai_output_register_cbs(char *scode, AI_OUTPUT_CBS_T *cbs, AI_OUTPUT_CBS_MODE_E mode)
 {
     OPERATE_RET rt = OPRT_OK;
     AI_OUTPUT_CBS_NODE_T *node = NULL, *new_node = NULL;
@@ -459,7 +459,7 @@ error:
 }
 
 /* unregister external cbs with scode */
-OPERATE_RET tuya_ai_output_unregister_cbs(CHAR_T *scode)
+OPERATE_RET tuya_ai_output_unregister_cbs(char *scode)
 {
     AI_OUTPUT_CBS_NODE_T *node = NULL;
     LIST_HEAD *pos = NULL, *n = NULL;

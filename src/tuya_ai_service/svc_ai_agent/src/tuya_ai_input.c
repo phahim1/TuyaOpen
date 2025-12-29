@@ -36,15 +36,15 @@
 #define AI_INPUT_STACK_SIZE (4608)
 #endif
 #ifndef AI_INPUT_RINGBUF_SIZE
-#define AI_INPUT_RINGBUF_SIZE (20 * 1024)
+#define AI_INPUT_RINGBUF_SIZE (20*1024)
 #endif
 #ifndef AI_INPUT_BUF_SIZE
-#define AI_INPUT_BUF_SIZE (6 * 1024)
+#define AI_INPUT_BUF_SIZE (6*1024)
 #endif
 
-#define AI_INPUT_TASK_DELAY (80)
+#define AI_INPUT_TASK_DELAY   (80)
 
-#define AI_ALERT_DEFAULT_TIMEOUT (1500) // ms
+#define AI_ALERT_DEFAULT_TIMEOUT   (1500) // ms
 
 typedef enum {
     /** alert idle state */
@@ -70,8 +70,8 @@ typedef struct {
     MUTEX_HANDLE mutex;
     QUEUE_HANDLE queue;
     CHAR_T *input_buf;
-    BOOL_T terminate;
-    BOOL_T queue_sync;
+    bool terminate;
+    bool queue_sync;
     AI_ALERT_CTX_T alert;
 } AI_INPUT_CTX_T;
 STATIC AI_INPUT_CTX_T ai_input_ctx;
@@ -81,9 +81,9 @@ STATIC VOID_T __alert_timeout_cb(TIMER_ID timer_id, VOID_T *arg);
 OPERATE_RET tuya_ai_input_write(AI_RINGBUF_HEAD_T *head, BYTE_T *data)
 {
     UINT_T rt = 0;
-    if ((ai_input_ctx.state != AI_INPUT_PROC) && (ai_input_ctx.state != AI_INPUT_STOPPING)) {
-        return OPRT_OK;
-    }
+    // if ((ai_input_ctx.state != AI_INPUT_PROC) && (ai_input_ctx.state != AI_INPUT_STOPPING)) {
+    //     return OPRT_OK;
+    // }
 
     if (data == NULL || head->len == 0) {
         return OPRT_OK;
@@ -159,7 +159,7 @@ OPERATE_RET tuya_ai_input_read(AI_RINGBUF_HEAD_T *head, CHAR_T *buf)
     return rt;
 }
 
-BOOL_T tuya_ai_input_is_started(VOID)
+bool tuya_ai_input_is_started(VOID)
 {
     UINT_T cnt = 0;
     while (!ai_input_ctx.queue_sync) {
@@ -242,7 +242,7 @@ OPERATE_RET tuya_ai_file_input(BYTE_T *data, UINT_T len, UINT_T total_len)
     return tuya_ai_agent_upload_stream(AI_PT_FILE, NULL, (CHAR_T *)data, len, total_len);
 }
 
-VOID tuya_ai_input_start(BOOL_T force)
+VOID tuya_ai_input_start(bool force)
 {
     OPERATE_RET rt = OPRT_OK;
     if (!tuya_ai_client_is_ready()) {
@@ -359,7 +359,8 @@ STATIC VOID __ai_input_thread(VOID *arg)
             }
             PR_DEBUG("start queue sync");
             ai_input_ctx.queue_sync = TRUE;
-        } break;
+        }
+        break;
         case AI_INPUT_START_LAZY: {
             if (tuya_ai_client_is_ready()) {
                 ai_input_ctx.state = AI_INPUT_PROC;
@@ -373,7 +374,8 @@ STATIC VOID __ai_input_thread(VOID *arg)
             }
             PR_DEBUG("start lazy queue sync");
             ai_input_ctx.queue_sync = TRUE;
-        } break;
+        }
+        break;
         case AI_INPUT_PROC: {
             tal_mutex_lock(ai_input_ctx.mutex);
             rt = tuya_ai_input_read(&head, ai_input_ctx.input_buf);
@@ -381,7 +383,8 @@ STATIC VOID __ai_input_thread(VOID *arg)
             if ((rt == OPRT_OK) && (head.len > 0)) {
                 tuya_ai_agent_upload_stream(head.type, &head.biz, ai_input_ctx.input_buf, head.len, head.total_len);
             }
-        } break;
+        }
+        break;
         case AI_INPUT_STOPPING: {
             if (ai_input_ctx.lazy_input++ < 30) {
                 tal_mutex_lock(ai_input_ctx.mutex);
@@ -396,15 +399,17 @@ STATIC VOID __ai_input_thread(VOID *arg)
             } else {
                 ai_input_ctx.state = AI_INPUT_STOP;
             }
-            ai_input_ctx.queue_sync = TRUE;
-        } break;
+        }
+        break;
         case AI_INPUT_STOP: {
             tuya_ai_agent_end();
             tal_mutex_lock(ai_input_ctx.mutex);
             tuya_ring_buff_reset(ai_input_ctx.ringbuf);
             tal_mutex_unlock(ai_input_ctx.mutex);
             ai_input_ctx.state = AI_INPUT_IDLE;
-        } break;
+            ai_input_ctx.queue_sync = TRUE;
+        }
+        break;
         case AI_INPUT_IDLE:
             break;
         default:
@@ -483,7 +488,7 @@ OPERATE_RET tuya_ai_input_alert(AI_CLOUD_ALERT_TYPE_E type, AI_ALERT_FB_CB cb)
     tuya_ai_agent_set_scode(AI_AGENT_SCODE_ALERT);
     CHAR_T eid[AI_UUID_V4_LEN + 1] = {0};
     tuya_ai_basic_uuid_v4(eid);
-    memcpy(eid, AI_ALERT_PLAY_ID, AI_ALERT_PLAY_ID_LEN); // set eid start from AI_ALERT_PLAY_ID
+    memcpy(eid, AI_ALERT_PLAY_ID, AI_ALERT_PLAY_ID_LEN);    // set eid start from AI_ALERT_PLAY_ID
     tuya_ai_agent_set_eid(eid);
     tuya_ai_input_start(FALSE);
     tal_mutex_lock(ai_input_ctx.mutex);
@@ -542,7 +547,7 @@ OPERATE_RET tuya_ai_input_alert(AI_CLOUD_ALERT_TYPE_E type, AI_ALERT_FB_CB cb)
     return rt;
 }
 
-OPERATE_RET tuya_ai_input_alert_notify(BOOL_T alert_tts_start)
+OPERATE_RET tuya_ai_input_alert_notify(bool alert_tts_start)
 {
     tal_mutex_lock(ai_input_ctx.mutex);
     if (ai_input_ctx.alert.state == AI_ALERT_TIMEOUT) {
@@ -577,8 +582,8 @@ STATIC VOID_T __alert_timeout_cb(TIMER_ID timer_id, VOID_T *arg)
 }
 
 typedef struct {
-    CONST CHAR_T *request_id;
-    CONST CHAR_T *content;
+    const CHAR_T *request_id;
+    const CHAR_T *content;
 } AI_CLOUD_TRIGGER_T;
 
 VOID __cloud_trigger_wq(VOID *data)
@@ -587,8 +592,8 @@ VOID __cloud_trigger_wq(VOID *data)
     if (trigger == NULL) {
         return;
     }
-    CONST CHAR_T *request_id = trigger->request_id;
-    CONST CHAR_T *content = trigger->content;
+    const CHAR_T *request_id = trigger->request_id;
+    const CHAR_T *content = trigger->content;
     if (request_id && content) {
         tuya_ai_input_stop();
         tuya_ai_output_stop(TRUE);
@@ -608,7 +613,7 @@ VOID __cloud_trigger_wq(VOID *data)
     tal_free(trigger);
 }
 
-OPERATE_RET tuya_ai_input_cloud_trigger(CONST CHAR_T *request_id, CONST CHAR_T *content)
+OPERATE_RET tuya_ai_input_cloud_trigger(const CHAR_T *request_id, const CHAR_T *content)
 {
     OPERATE_RET rt = OPRT_OK;
 

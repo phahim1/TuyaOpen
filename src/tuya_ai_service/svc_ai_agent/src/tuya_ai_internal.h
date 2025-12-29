@@ -30,8 +30,8 @@
 typedef struct {
     AI_PACKET_PT type;
     AI_BIZ_HD_T biz;
-    UINT_T len;
-    UINT_T total_len;
+    uint32_t len;
+    uint32_t total_len;
 } AI_RINGBUF_HEAD_T;
 
 /**
@@ -45,34 +45,34 @@ typedef struct {
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tuya_ai_agent_upload_stream(AI_PACKET_PT ptype, AI_BIZ_HD_T *biz, CHAR_T *data, UINT_T len, UINT_T total_len);
+OPERATE_RET tuya_ai_agent_upload_stream(AI_PACKET_PT ptype, AI_BIZ_HD_T *biz, char *data, uint32_t len, uint32_t total_len);
 
 /**
  * @brief ai agent start
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tuya_ai_agent_start(VOID);
+OPERATE_RET tuya_ai_agent_start(void);
 
 /**
  * @brief ai agent end
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tuya_ai_agent_end(VOID);
+OPERATE_RET tuya_ai_agent_end(void);
 
 /**
  * @brief ai input init
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tuya_ai_input_init(VOID);
+OPERATE_RET tuya_ai_input_init(void);
 
 /**
  * @brief ai input deinit
  *
  */
-VOID tuya_ai_input_deinit(VOID);
+void tuya_ai_input_deinit(void);
 
 /**
  * @brief notify alert input is done
@@ -81,7 +81,7 @@ VOID tuya_ai_input_deinit(VOID);
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tuya_ai_input_alert_notify(BOOL_T alert_tts_start);
+OPERATE_RET tuya_ai_input_alert_notify(bool alert_tts_start);
 
 /**
  * @brief cloud trigger input handler
@@ -91,7 +91,7 @@ OPERATE_RET tuya_ai_input_alert_notify(BOOL_T alert_tts_start);
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tuya_ai_input_cloud_trigger(CONST CHAR_T *request_id, CONST CHAR_T *content);
+OPERATE_RET tuya_ai_input_cloud_trigger(const char *request_id, const char *content);
 
 /**
  * @brief ai output init
@@ -106,7 +106,7 @@ OPERATE_RET tuya_ai_output_init(AI_OUTPUT_CBS_T *cbs);
  * @brief ai output deinit
  *
  */
-VOID tuya_ai_output_deinit(VOID);
+void tuya_ai_output_deinit(void);
 
 /**
  * @brief ai output alert
@@ -126,7 +126,7 @@ OPERATE_RET tuya_ai_output_alert(AI_ALERT_TYPE_E type);
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tuya_ai_output_text(CHAR_T *scode, AI_TEXT_TYPE_E type, ty_cJSON *root, BOOL_T eof);
+OPERATE_RET tuya_ai_output_text(char *scode, AI_TEXT_TYPE_E type, cJSON *root, bool eof);
 
 /**
  * @brief ai output media
@@ -138,5 +138,5 @@ OPERATE_RET tuya_ai_output_text(CHAR_T *scode, AI_TEXT_TYPE_E type, ty_cJSON *ro
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tuya_ai_output_media(CHAR_T *scode, AI_PACKET_PT type, CHAR_T *data, UINT_T len, UINT_T total_len);
+OPERATE_RET tuya_ai_output_media(char *scode, AI_PACKET_PT type, char *data, uint32_t len, uint32_t total_len);
 #endif // __TUYA_AI_INTERNAL_H__

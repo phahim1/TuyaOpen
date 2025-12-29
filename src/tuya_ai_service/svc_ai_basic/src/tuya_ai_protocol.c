@@ -438,12 +438,9 @@ STATIC OPERATE_RET __ai_packet_sign(CHAR_T *buf, UCHAR_T *signature)
 UINT_T __ai_get_send_attr_len(AI_SEND_PACKET_T *info)
 {
     UINT_T len = 0, idx = 0;
-    if (info->count != 0) {
+    if ((info->count != 0) && (info->attrs)) {
         len += SIZEOF(len);
         for (idx = 0; idx < info->count; idx++) {
-            if (info->attrs[idx] == NULL) {
-                continue;
-            }
 #if defined(AI_VERSION) && (0x01 == AI_VERSION)
             len += OFFSOF(AI_ATTRIBUTE_T, value) + info->attrs[idx]->length;
 #else
@@ -1679,14 +1676,7 @@ OPERATE_RET tuya_ai_basic_client_hello(AI_SERVER_CFG_INFO_T *cfg)
     AI_SEND_PACKET_T pkt = {0};
     pkt.type = AI_PT_CLIENT_HELLO;
 
-#if defined(AI_VERSION) && (0x02 == AI_VERSION)
-    if (cfg->rsa_public_key) {
-        ai_basic_proto->rsa_public_key = mm_strdup(cfg->rsa_public_key);
-    } else {
-        PR_ERR("rsa public key is null");
-        return OPRT_COM_ERROR;
-    }
-#endif
+    ai_basic_proto->rsa_public_key = mm_strdup(cfg->rsa_public_key);
 
     rt = __create_clt_hello_attrs(&pkt, cfg);
     if (OPRT_OK != rt) {
@@ -2232,8 +2222,6 @@ OPERATE_RET tuya_ai_basic_connect(AI_SERVER_CFG_INFO_T *cfg)
         if (OPRT_OK == rt) {
             ai_basic_proto->connected = TRUE;
             break;
-        } else {
-            PR_ERR("connect to host:%s, port:%d failed, rt:%d", cfg->hosts[idx], cfg->tcp_port, rt);
         }
     }
     return rt;

@@ -374,6 +374,9 @@ STATIC OPERATE_RET __ai_setup()
     }
     rt = tuya_ai_mq_ser_cfg_req();
     if (OPRT_OK != rt) {
+        if (rt == OPRT_SVC_MQTT_GW_MQ_OFFLILNE) {
+            __ai_client_set_state(AI_STATE_IDLE);
+        }
         return rt;
     }
     __ai_start_expire_tid();
@@ -385,6 +388,7 @@ STATIC OPERATE_RET __ai_setup()
 VOID tuya_ai_client_deinit(VOID)
 {
     if (ai_basic_client) {
+        ty_publish_event(EVENT_AI_CLIENT_CLOSE, NULL);
         ai_basic_client->terminate = TRUE;
     }
 }
