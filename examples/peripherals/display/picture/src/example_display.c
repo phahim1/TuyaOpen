@@ -10,7 +10,6 @@
 #include "tkl_output.h"
 
 #include "tdl_display_manage.h"
-#include "tdl_display_draw.h"
 #include "board_com_api.h"
 
 /***********************************************************
