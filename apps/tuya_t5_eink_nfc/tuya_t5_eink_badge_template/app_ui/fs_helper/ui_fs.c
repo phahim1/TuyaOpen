@@ -40,16 +40,240 @@
 /***********************************************************
 ***********************function define**********************
 ***********************************************************/
+
+/**
+ * @brief Check if the file system is ready
+ */
+static bool ui_fs_ready_cb(lv_fs_drv_t *drv)
+{
+    (void)drv;
+    return true;
+}
+
+/**
+ * @brief Open a file
+ */
+static void *ui_fs_open_cb(lv_fs_drv_t *drv, const char *path, lv_fs_mode_t mode)
+{
+    (void)drv;
+    
+    const char *mode_str = NULL;
+    if (mode == LV_FS_MODE_RD) {
+        mode_str = "rb";
+    } else if (mode == LV_FS_MODE_WR) {
+        mode_str = "wb";
+    } else if (mode == (LV_FS_MODE_RD | LV_FS_MODE_WR)) {
+        mode_str = "r+b";
+    } else {
+        return NULL;
+    }
+    
+    TUYA_FILE file = tkl_fopen(path, mode_str);
+    return (void *)file;
+}
+
+/**
+ * @brief Close an opened file
+ */
+static lv_fs_res_t ui_fs_close_cb(lv_fs_drv_t *drv, void *file_p)
+{
+    (void)drv;
+    
+    TUYA_FILE file = (TUYA_FILE)file_p;
+    int ret = tkl_fclose(file);
+    
+    return (ret == 0) ? LV_FS_RES_OK : LV_FS_RES_UNKNOWN;
+}
+
+/**
+ * @brief Read data from file
+ */
+static lv_fs_res_t ui_fs_read_cb(lv_fs_drv_t *drv, void *file_p, void *buf, uint32_t btr, uint32_t *br)
+{
+    (void)drv;
+    
+    TUYA_FILE file = (TUYA_FILE)file_p;
+    int bytes_read = tkl_fread(buf, btr, file);
+    
+    if (bytes_read < 0) {
+        if (br) *br = 0;
+        return LV_FS_RES_UNKNOWN;
+    }
+    
+    if (br) *br = (uint32_t)bytes_read;
+    return LV_FS_RES_OK;
+}
+
+/**
+ * @brief Write data to file
+ */
+static lv_fs_res_t ui_fs_write_cb(lv_fs_drv_t *drv, void *file_p, const void *buf, uint32_t btw, uint32_t *bw)
+{
+    (void)drv;
+    
+    TUYA_FILE file = (TUYA_FILE)file_p;
+    int bytes_written = tkl_fwrite((void *)buf, btw, file);
+    
+    if (bytes_written < 0) {
+        if (bw) *bw = 0;
+        return LV_FS_RES_UNKNOWN;
+    }
+    
+    if (bw) *bw = (uint32_t)bytes_written;
+    return LV_FS_RES_OK;
+}
+
+/**
+ * @brief Set the file position indicator
+ */
+static lv_fs_res_t ui_fs_seek_cb(lv_fs_drv_t *drv, void *file_p, uint32_t pos, lv_fs_whence_t whence)
+{
+    (void)drv;
+    
+    TUYA_FILE file = (TUYA_FILE)file_p;
+    
+    int tkl_whence;
+    switch (whence) {
+        case LV_FS_SEEK_SET:
+            tkl_whence = SEEK_SET;
+            break;
+        case LV_FS_SEEK_CUR:
+            tkl_whence = SEEK_CUR;
+            break;
+        case LV_FS_SEEK_END:
+            tkl_whence = SEEK_END;
+            break;
+        default:
+            return LV_FS_RES_INV_PARAM;
+    }
+    
+    int ret = tkl_fseek(file, pos, tkl_whence);
+    return (ret == 0) ? LV_FS_RES_OK : LV_FS_RES_UNKNOWN;
+}
+
+/**
+ * @brief Get the current position in file
+ */
+static lv_fs_res_t ui_fs_tell_cb(lv_fs_drv_t *drv, void *file_p, uint32_t *pos_p)
+{
+    (void)drv;
+    
+    TUYA_FILE file = (TUYA_FILE)file_p;
+    int64_t pos = tkl_ftell(file);
+    
+    if (pos < 0) {
+        return LV_FS_RES_UNKNOWN;
+    }
+    
+    if (pos_p) *pos_p = (uint32_t)pos;
+    return LV_FS_RES_OK;
+}
+
+/**
+ * @brief Open a directory
+ */
+static void *ui_fs_dir_open_cb(lv_fs_drv_t *drv, const char *path)
+{
+    (void)drv;
+    
+    TUYA_DIR dir;
+    int ret = tkl_dir_open(path, &dir);
+    
+    if (ret != 0) {
+        return NULL;
+    }
+    
+    return (void *)dir;
+}
+
+/**
+ * @brief Read a directory
+ */
+static lv_fs_res_t ui_fs_dir_read_cb(lv_fs_drv_t *drv, void *rddir_p, char *fn, uint32_t fn_len)
+{
+    (void)drv;
+    
+    TUYA_DIR dir = (TUYA_DIR)rddir_p;
+    TUYA_FILEINFO info;
+    
+    int ret = tkl_dir_read(dir, &info);
+    if (ret != 0) {
+        fn[0] = '\0';
+        return LV_FS_RES_OK; // End of directory
+    }
+    
+    const char *name = NULL;
+    ret = tkl_dir_name(info, &name);
+    if (ret != 0 || name == NULL) {
+        fn[0] = '\0';
+        return LV_FS_RES_UNKNOWN;
+    }
+    
+    // Check if it's a directory and prepend '/' if so
+    BOOL_T is_dir = FALSE;
+    tkl_dir_is_directory(info, &is_dir);
+    
+    if (is_dir) {
+        if (fn_len < 2) {
+            fn[0] = '\0';
+            return LV_FS_RES_UNKNOWN;
+        }
+        fn[0] = '/';
+        strncpy(fn + 1, name, fn_len - 2);
+        fn[fn_len - 1] = '\0';
+    } else {
+        strncpy(fn, name, fn_len - 1);
+        fn[fn_len - 1] = '\0';
+    }
+    
+    return LV_FS_RES_OK;
+}
+
+/**
+ * @brief Close a directory
+ */
+static lv_fs_res_t ui_fs_dir_close_cb(lv_fs_drv_t *drv, void *rddir_p)
+{
+    (void)drv;
+    
+    TUYA_DIR dir = (TUYA_DIR)rddir_p;
+    int ret = tkl_dir_close(dir);
+    
+    return (ret == 0) ? LV_FS_RES_OK : LV_FS_RES_UNKNOWN;
+}
+
+/**
+ * @brief Initialize LVGL file system driver
+ */
 void ui_fs_init(void)
 {
-    // int rt = tkl_fs_mount(SDCARD_MOUNT_PATH, DEV_SDCARD);
-    // if (rt != 0) {
-    //     PR_ERR("Failed to mount SD card: %d", rt);
-    //     return;
-    // }
-
-    return;
+    static lv_fs_drv_t drv;
+    lv_fs_drv_init(&drv);
+    
+    // Set driver letter (can be any letter, using 'S' for Sdcard/Storage)
+    drv.letter = 'S';
+    
+    // Set cache size (0 means no cache)
+    drv.cache_size = 0;
+    
+    // Register callback functions
+    drv.ready_cb = ui_fs_ready_cb;
+    drv.open_cb = ui_fs_open_cb;
+    drv.close_cb = ui_fs_close_cb;
+    drv.read_cb = ui_fs_read_cb;
+    drv.write_cb = ui_fs_write_cb;
+    drv.seek_cb = ui_fs_seek_cb;
+    drv.tell_cb = ui_fs_tell_cb;
+    drv.dir_open_cb = ui_fs_dir_open_cb;
+    drv.dir_read_cb = ui_fs_dir_read_cb;
+    drv.dir_close_cb = ui_fs_dir_close_cb;
+    
+    // Register the driver
+    lv_fs_drv_register(&drv);
+    
+    PR_DEBUG("LVGL file system driver registered with letter 'S'");
 }
+
 
 const char *ui_fs_file_type_to_string(ui_fs_file_type_t type)
 {
