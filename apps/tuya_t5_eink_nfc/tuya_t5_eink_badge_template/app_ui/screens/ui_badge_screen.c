@@ -51,8 +51,12 @@ static void ui_badge_screen_keyboard_handler(lv_event_t * e);
 /**************** extern badge data functions start ************************/
 static ui_fs_badge_item_t *g_badge_item = NULL;
 static uint32_t g_badge_id = 1;
+static uint32_t g_current_displayed_badge_id = 0;  // Track currently displayed badge to avoid redundant updates
+static lv_obj_t *ui_badge_screen_fullscreen_image = NULL;  // Full screen image for BADGE_IMAGE type
 
 void ui_badge_screen_badge_data_update(ui_fs_badge_item_t *badge_item);
+static void ui_badge_screen_show_normal_badge(void);
+static void ui_badge_screen_show_image_badge(ui_fs_badge_item_t *badge_item);
 /**************** extern badge data functions end ************************/
 
 // event funtions
@@ -349,6 +353,16 @@ void ui_badge_screen_screen_destroy(void)
     ui_badge_screen_bottom_container = NULL;
     ui_badge_screen_slogan = NULL;
     ui_badge_screen_image_QR = NULL;
+    ui_badge_screen_fullscreen_image = NULL;
+
+    // Reset badge tracking
+    g_current_displayed_badge_id = 0;
+
+    // Free badge item memory
+    if(g_badge_item) {
+        lv_free(g_badge_item);
+        g_badge_item = NULL;
+    }
 
     ui_badge_screen_keyboard_group_destroy();
 }
@@ -368,7 +382,7 @@ static void ui_badge_screen_keyboard_group_init(void)
 
     sg_keyboard_group = lv_group_create();
     if (NULL == sg_keyboard_group) {
-        LV_LOG_ERROR("ui_badge_screen_keyboard_group_init: failed to create group");
+        PR_ERR("ui_badge_screen_keyboard_group_init: failed to create group");
         return;
     }
 
@@ -392,17 +406,50 @@ static void ui_badge_screen_keyboard_group_destroy(void)
 static void ui_badge_screen_keyboard_handler(lv_event_t * e)
 {
     lv_key_t key = lv_event_get_key(e);
+    uint32_t badge_count = ui_fs_badge_list_number_get();
+    uint32_t old_badge_id = g_badge_id;
 
     switch (key) {
         case LV_KEY_UP:
         case LV_KEY_LEFT:
         case LV_KEY_PREV:
+            // Switch to previous badge
+            if(badge_count > 0) {
+                if(g_badge_id > 1) {
+                    g_badge_id--;
+                } else {
+                    g_badge_id = badge_count;  // Wrap to last badge
+                }
+                
+                // Only update if badge ID actually changed
+                if(old_badge_id != g_badge_id) {
+                    if(ui_fs_badge_read(g_badge_id, g_badge_item) == 0) {
+                        ui_badge_screen_badge_data_update(g_badge_item);
+                    }
+                }
+            }
             break;
         case LV_KEY_DOWN:
         case LV_KEY_RIGHT:
         case LV_KEY_NEXT:
+            // Switch to next badge
+            if(badge_count > 0) {
+                if(g_badge_id < badge_count) {
+                    g_badge_id++;
+                } else {
+                    g_badge_id = 1;  // Wrap to first badge
+                }
+                
+                // Only update if badge ID actually changed
+                if(old_badge_id != g_badge_id) {
+                    if(ui_fs_badge_read(g_badge_id, g_badge_item) == 0) {
+                        ui_badge_screen_badge_data_update(g_badge_item);
+                    }
+                }
+            }
             break;
         case LV_KEY_ENTER:
+            // Could be used for additional actions (e.g., trigger NFC)
             break;
         case LV_KEY_ESC:
             _ui_screen_change(&ui_home_screen, LV_SCR_LOAD_ANIM_FADE_ON, 0, 0, &ui_home_screen_screen_init);
@@ -414,13 +461,94 @@ static void ui_badge_screen_keyboard_handler(lv_event_t * e)
 
 /****************************** keyboard end ******************************/
 
+/**
+ * @brief Show normal badge UI elements
+ */
+static void ui_badge_screen_show_normal_badge(void)
+{
+    if(ui_badge_screen_left_container) {
+        lv_obj_remove_flag(ui_badge_screen_left_container, LV_OBJ_FLAG_HIDDEN);
+    }
+    if(ui_badge_screen_main_container) {
+        lv_obj_remove_flag(ui_badge_screen_main_container, LV_OBJ_FLAG_HIDDEN);
+    }
+    if(ui_badge_screen_fullscreen_image) {
+        lv_obj_add_flag(ui_badge_screen_fullscreen_image, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+/**
+ * @brief Show image badge in full screen
+ * @param badge_item Badge item containing image path
+ */
+static void ui_badge_screen_show_image_badge(ui_fs_badge_item_t *badge_item)
+{
+    if(badge_item == NULL) {
+        return;
+    }
+
+    // Hide normal badge UI elements
+    if(ui_badge_screen_left_container) {
+        lv_obj_add_flag(ui_badge_screen_left_container, LV_OBJ_FLAG_HIDDEN);
+    }
+    if(ui_badge_screen_main_container) {
+        lv_obj_add_flag(ui_badge_screen_main_container, LV_OBJ_FLAG_HIDDEN);
+    }
+
+    // Create fullscreen image if not exists
+    if(ui_badge_screen_fullscreen_image == NULL) {
+        ui_badge_screen_fullscreen_image = lv_image_create(ui_badge_screen);
+        if(ui_badge_screen_fullscreen_image == NULL) {
+            return;
+        }
+        
+        // Get screen dimensions
+        lv_coord_t screen_w = lv_obj_get_width(ui_badge_screen);
+        lv_coord_t screen_h = lv_obj_get_height(ui_badge_screen);
+        
+        // Set exact size to fill screen (use absolute pixels, not percentage)
+        lv_obj_set_size(ui_badge_screen_fullscreen_image, screen_w, screen_h);
+        lv_obj_set_pos(ui_badge_screen_fullscreen_image, 0, 0);
+        lv_obj_remove_flag(ui_badge_screen_fullscreen_image, LV_OBJ_FLAG_SCROLLABLE);
+        
+        // Remove any styling that might affect display
+        lv_obj_set_style_radius(ui_badge_screen_fullscreen_image, 0, LV_PART_MAIN);
+        lv_obj_set_style_bg_opa(ui_badge_screen_fullscreen_image, 0, LV_PART_MAIN);
+        lv_obj_set_style_border_width(ui_badge_screen_fullscreen_image, 0, LV_PART_MAIN);
+        lv_obj_set_style_pad_all(ui_badge_screen_fullscreen_image, 0, LV_PART_MAIN);
+    }
+
+    // Show fullscreen image and move to foreground
+    lv_obj_remove_flag(ui_badge_screen_fullscreen_image, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_move_foreground(ui_badge_screen_fullscreen_image);
+    
+    // Set image source
+    lv_image_set_src(ui_badge_screen_fullscreen_image, badge_item->image_path);
+    
+    // Update layout and force redraw
+    lv_obj_update_layout(ui_badge_screen_fullscreen_image);
+    lv_obj_invalidate(ui_badge_screen_fullscreen_image);
+}
+
 void ui_badge_screen_badge_data_update(ui_fs_badge_item_t *badge_item)
 {
     if(badge_item == NULL) {
         return;
     }
 
+    // Check if this badge is already displayed to avoid redundant updates
+    if(g_current_displayed_badge_id == badge_item->id) {
+        PR_DEBUG("Badge ID %d already displayed, skipped", badge_item->id);
+        return;
+    }
+
+    // Update the current displayed badge ID
+    g_current_displayed_badge_id = badge_item->id;
+
     if(badge_item->type == UI_FS_BADGE_TYPE_BADGE) {
+        // Show normal badge UI
+        ui_badge_screen_show_normal_badge();
+        
         lv_label_set_text_fmt(ui_badge_screen_name, "%s %s", badge_item->firstname, badge_item->lastname);
         lv_label_set_text(ui_badge_screen_title, badge_item->title);
         lv_image_set_src(ui_badge_screen_image, badge_item->profile_picture);
@@ -438,10 +566,10 @@ void ui_badge_screen_badge_data_update(ui_fs_badge_item_t *badge_item)
         lv_label_set_text(ui_badge_screen_slogan, badge_item->slogan);
         lv_image_set_src(ui_badge_screen_image_QR, badge_item->image_QR);
     } else if(badge_item->type == UI_FS_BADGE_TYPE_BADGE_IMAGE) {
-        // lv_image_set_src(ui_badge_screen_image, badge_item->image_path);
-        // lv_label_set_text(ui_badge_screen_email, badge_item->nfc_data);
-        // lv_label_set_text(ui_badge_screen_phone, badge_item->nfc_data);
-        // lv_label_set_text(ui_badge_screen_site, badge_item->nfc_data);
-        // lv_label_set_text(ui_badge_screen_company, badge_item->nfc_data);
+        extern void __set_need_partial_refresh(bool need_partial_refresh);
+        __set_need_partial_refresh(false);
+
+        // Show fullscreen image badge
+        ui_badge_screen_show_image_badge(badge_item);
     }
 }

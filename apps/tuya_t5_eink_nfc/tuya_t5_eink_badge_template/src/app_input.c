@@ -60,6 +60,8 @@ static void button_callback(char *name, TDL_BUTTON_TOUCH_EVENT_E event, void *ar
  */
 static void button_callback(char *name, TDL_BUTTON_TOUCH_EVENT_E event, void *argc)
 {
+    static uint32_t g_button_press_cnt = 0;
+
     (void)argc;
     uint32_t    i;
     const char *key_name = "UNKNOWN";
@@ -92,6 +94,12 @@ static void button_callback(char *name, TDL_BUTTON_TOUCH_EVENT_E event, void *ar
                 }
 
                 PR_DEBUG("Button '%s' pressed -> LV_KEY: %lu", name, sg_current_key);
+                g_button_press_cnt++;
+                if (g_button_press_cnt >= 10) {
+                    g_button_press_cnt = 0;
+                    extern void __set_need_partial_refresh(bool need_partial_refresh);
+                    __set_need_partial_refresh(false);
+                }
                 break;
             }
         }

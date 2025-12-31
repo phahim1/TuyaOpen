@@ -234,7 +234,55 @@ static void __epd_display(DISP_UC8276_DEV_T *dev, const uint8_t *data, uint32_t 
 
         __update_display_partial(dev);
     } else {
+        /* Full refresh mode: clear screen buffer first to remove ghosting */
         __epd_partial_out(dev);
+        
+        // /* Clear both RAM buffers (0x24 and 0x26) with white (0xFF) */
+        // __send_cmd(dev, 0x24);
+        // for (uint32_t i = 0; i < size; i++) {
+        //     __send_data(dev, 0xFF);
+        // }
+
+        // __send_cmd(dev, 0x26);
+        // for (uint32_t i = 0; i < size; i++) {
+        //     __send_data(dev, 0xFF);
+        // }
+
+        // // __update_display(dev);
+        // __update_display_partial(dev);
+
+#if 1
+        /* Set RAM entry mode (x increase, y increase) */
+        __send_cmd(dev, 0x11);  // Data entry mode
+        __send_data(dev, 0x03); // x increase, y increase: normal mode
+
+        /* Set RAM address range for partial refresh (full screen) */
+        __send_cmd(dev, 0x44);  // RAM X range: 0-49 (50 bytes = 400 pixels)
+        __send_data(dev, 0x00); // X start (byte address: 0)
+        __send_data(dev, 0x31); // X end (byte address: 49 = 0x31)
+
+        __send_cmd(dev, 0x45);  // RAM Y range: 0-299
+        __send_data(dev, 0x00); // Y start low
+        __send_data(dev, 0x00); // Y start high
+        __send_data(dev, 0x2B); // Y end low (299 = 0x012B)
+        __send_data(dev, 0x01); // Y end high
+
+        /* Set RAM address counter to start position */
+        __send_cmd(dev, 0x4E); // RAM X counter
+        __send_data(dev, 0x00);
+        __send_cmd(dev, 0x4F);  // RAM Y counter
+        __send_data(dev, 0x00); // Y counter low
+        __send_data(dev, 0x00); // Y counter high
+
+        __send_cmd(dev, 0x24); // DTM1 - Data transmission for partial refresh
+        for (uint32_t i = 0; i < size; i++) {
+            __send_data(dev, 0xFF);
+        }
+
+        __update_display_partial(dev);
+#endif
+
+        /* Now write the actual image data */
         __send_cmd(dev, 0x24);
         for (uint32_t i = 0; i < size; i++) {
             __send_data(dev, (i < len) ? ~__reverse_bits(data[i]) : 0xFF);
@@ -334,6 +382,13 @@ static OPERATE_RET __tdd_disp_open(TDD_DISP_DEV_HANDLE_T device)
     return OPRT_OK;
 }
 
+static bool g_need_partial_refresh = true;
+
+void __set_need_partial_refresh(bool need_partial_refresh)
+{
+    g_need_partial_refresh = need_partial_refresh;
+}
+
 static OPERATE_RET __tdd_disp_flush(TDD_DISP_DEV_HANDLE_T device, TDL_DISP_FRAME_BUFF_T *frame_buff)
 {
     DISP_UC8276_DEV_T *dev = (DISP_UC8276_DEV_T *)device;
@@ -342,7 +397,11 @@ static OPERATE_RET __tdd_disp_flush(TDD_DISP_DEV_HANDLE_T device, TDL_DISP_FRAME
         return OPRT_INVALID_PARM;
     }
 
-    __epd_display(dev, frame_buff->frame, frame_buff->len, true);
+    __epd_display(dev, frame_buff->frame, frame_buff->len, g_need_partial_refresh);
+
+    if (false == g_need_partial_refresh) {
+        g_need_partial_refresh = true;
+    }
 
     if (frame_buff->free_cb) {
         frame_buff->free_cb(frame_buff);

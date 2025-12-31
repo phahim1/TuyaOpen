@@ -311,8 +311,8 @@
  *If size is not set to 0, the decoder will fail to decode when the cache is full.
  *If size is 0, the cache function is not enabled and the decoded mem will be released immediately after use.*/
 // Modified by TUYA: Increase cache size to avoid repeated decoding
-// 256KB can cache several decoded images (e.g., 2-3 images of 100x100 RGBA)
-#define LV_CACHE_DEF_SIZE       (256 * 1024)
+// 1MB can cache full-screen images (e.g., 400x300 ARGB8888 = 469KB)
+#define LV_CACHE_DEF_SIZE       (500 * 1024)
 
 /*Default number of image header cache entries. The cache is used to store the headers of images
  *The main logic is like `LV_CACHE_DEF_SIZE` but for image headers.*/
