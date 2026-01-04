@@ -6,50 +6,6 @@ config TUYA_PRODUCT_ID
 
 rsource "../ai_components/Kconfig"
 
-choice    
-    prompt "choose wakeup keyword"
-    default ENABLE_WAKEUP_KEYWORD_NIHAO_TUYA
-
-    config ENABLE_WAKEUP_KEYWORD_NIHAO_TUYA
-    bool "the wake-up word is configured as NI HAO TUYA."   
-
-    config ENABLE_WAKEUP_KEYWORD_NIHAO_XIAOZHI
-    bool "the wake-up word is configured as NI HAO XIAO ZHI."    
-endchoice
-
-choice
-    prompt "choose display module"
-    default ENABLE_CHAT_DISPLAY_NONE
-
-    config ENABLE_CHAT_DISPLAY_NONE
-        bool "No display module"
-
-    config ENABLE_CHAT_DISPLAY
-        bool "Use DISPLAY module"
-
-    config ENABLE_CHAT_DISPLAY2
-        bool "Use DISPLAY2 module"
-endchoice
-
-if (ENABLE_CHAT_DISPLAY)
-    rsource "./src/display/Kconfig"
-endif
-
-if (ENABLE_CHAT_DISPLAY2)
-    rsource "./src/display2/Kconfig"
-endif
-
-choice
-    prompt "choose language"
-    default ENABLE_LANGUAGE_CHINESE
-
-    config ENABLE_LANGUAGE_CHINESE
-        bool "Chinese"
-
-    config ENABLE_LANGUAGE_ENGLISH
-        bool "English"
-endchoice
-
 config ENABLE_BATTERY
     bool "enable the battery module"
     default n

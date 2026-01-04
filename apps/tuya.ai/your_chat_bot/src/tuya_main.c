@@ -39,15 +39,10 @@
 #include "lwip_init.h"
 #endif
 
-#if defined(ENABLE_CHAT_DISPLAY) && (ENABLE_CHAT_DISPLAY == 1) || defined(ENABLE_CHAT_DISPLAY2) && (ENABLE_CHAT_DISPLAY2 == 1)
-#include "app_display.h"
-#endif
-
 #include "board_com_api.h"
 
 #include "app_chat_bot.h"
 #include "reset_netcfg.h"
-#include "app_system_info.h"
 
 #if defined(ENABLE_BATTERY) && (ENABLE_BATTERY == 1)
 #include "app_battery.h"
@@ -116,12 +111,7 @@ OPERATE_RET audio_dp_obj_proc(dp_obj_recv_t *dpobj)
 #if defined(ENABLE_CHAT_DISPLAY) && (ENABLE_CHAT_DISPLAY == 1)
             char volume_str[20] = {0};
             snprintf(volume_str, sizeof(volume_str), "%s%d", VOLUME, volume);
-            app_display_send_msg(TY_DISPLAY_TP_NOTIFICATION, (uint8_t *)volume_str, strlen(volume_str));
-#endif
-#if defined(ENABLE_CHAT_DISPLAY2) && (ENABLE_CHAT_DISPLAY2 == 1)
-            char volume_msg[36] = {0};
-            snprintf(volume_msg, sizeof(volume_msg), "%s %d (DP)", SYSTEM_MSG_VOLUME, volume);
-            app_display_send_msg(TY_DISPLAY_TP_SYSTEM_MSG, (uint8_t *)volume_msg, strlen(volume_msg));
+            ai_ui_disp_msg(AI_UI_DISP_NOTIFICATION, (uint8_t *)volume_str, strlen(volume_str));
 #endif
             break;
         }
@@ -198,7 +188,7 @@ void user_event_handler_on(tuya_iot_client_t *client, tuya_event_msg_t *event)
 
 #if defined(ENABLE_CHAT_DISPLAY) && (ENABLE_CHAT_DISPLAY == 1)
             UI_WIFI_STATUS_E wifi_status = UI_WIFI_STATUS_GOOD;
-            app_display_send_msg(TY_DISPLAY_TP_NETWORK, (uint8_t *)&wifi_status, sizeof(UI_WIFI_STATUS_E));
+            ai_ui_disp_msg(AI_UI_DISP_NETWORK, (uint8_t *)&wifi_status, sizeof(UI_WIFI_STATUS_E));
 #endif
             ai_audio_volume_upload();
         }
@@ -315,12 +305,12 @@ void user_main(void)
 
     reset_netconfig_start();
 
-    if (OPRT_OK != tuya_authorize_read(&license)) {
+    // if (OPRT_OK != tuya_authorize_read(&license)) {
         license.uuid = TUYA_OPENSDK_UUID;
         license.authkey = TUYA_OPENSDK_AUTHKEY;
         PR_WARN("Replace the TUYA_OPENSDK_UUID and TUYA_OPENSDK_AUTHKEY contents, otherwise the demo cannot work.\n \
                 Visit https://platform.tuya.com/purchase/index?type=6 to get the open-sdk uuid and authkey.");
-    }
+    // }
 
     /* Initialize Tuya device configuration */
     ret = tuya_iot_init(&ai_client, &(const tuya_iot_config_t){
@@ -362,14 +352,13 @@ void user_main(void)
     if (ret != OPRT_OK) {
         PR_ERR("tuya_audio_recorde_init failed");
     }
+
 #if defined(ENABLE_BATTERY) && (ENABLE_BATTERY == 1)
     ret = app_battery_init();
     if (ret != OPRT_OK) {
         PR_ERR("app_battery_init failed");
     }
 #endif
-
-    app_system_info();
 
     /* Start tuya iot task */
     tuya_iot_start(&ai_client);
