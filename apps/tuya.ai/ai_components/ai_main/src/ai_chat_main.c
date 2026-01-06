@@ -305,7 +305,7 @@ static OPERATE_RET __ai_chat_mode_open_button(void)
 @param data Event data (unused)
 @return int Operation result
 */
-int __ai_mqtt_connected_evt(void *data)
+static int __ai_mqtt_connected_evt(void *data)
 {
     OPERATE_RET rt = OPRT_OK;
     uint32_t mode = sg_ai_default_mode;

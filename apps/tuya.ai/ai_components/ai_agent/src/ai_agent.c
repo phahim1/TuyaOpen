@@ -247,10 +247,8 @@ OPERATE_RET __ai_agent_alert_cb(AI_ALERT_TYPE_E type)
 
 /**
 @brief Initialize the AI agent module
-@param cb User event notification callback (unused, kept for compatibility)
 @return OPERATE_RET Operation result
-*/
-OPERATE_RET ai_agent_init(AI_USER_EVENT_NOTIFY cb)
+*/OPERATE_RET ai_agent_init(void)
 {
     OPERATE_RET rt = OPRT_OK;
     AI_AGENT_CFG_T ai_agent_cfg = {0};
