@@ -284,15 +284,16 @@ OPERATE_RET tal_dma2d_convert(TAL_DMA2D_HANDLE_T handle, TKL_DMA2D_FRAME_INFO_T 
     sg_dma2d.curr_sub_obj = dam2d_obj;
 
     sg_dma2d.hardware_dma2d.is_busy = true;
+    
+    dam2d_obj->is_busy = true;
 
     rt = tkl_dma2d_convert(src, dst);
     if (OPRT_OK != rt) {
         PR_ERR("tkl_dma2d_convert failed, rt: %d", rt);
         sg_dma2d.hardware_dma2d.is_busy = false;
+        dam2d_obj->is_busy = false;
         goto __ERR;
     }
-
-    dam2d_obj->is_busy = true;
 
     tal_mutex_unlock(sg_dma2d.mutex);
 
@@ -337,14 +338,15 @@ OPERATE_RET tal_dma2d_memcpy(TAL_DMA2D_HANDLE_T handle, TKL_DMA2D_FRAME_INFO_T *
 
     sg_dma2d.hardware_dma2d.is_busy = true;
 
+    dam2d_obj->is_busy = true;
+
     rt = tkl_dma2d_memcpy(src, dst);
     if (OPRT_OK != rt) {
         PR_ERR("tkl_dma2d_memcpy failed, rt: %d", rt);
-        sg_dma2d.hardware_dma2d.is_busy = false;
+        sg_dma2d.hardware_dma2d.is_busy = false;   
+        dam2d_obj->is_busy = false;
         goto __ERR;
     }
-
-    dam2d_obj->is_busy = true;
 
     tal_mutex_unlock(sg_dma2d.mutex);
 
