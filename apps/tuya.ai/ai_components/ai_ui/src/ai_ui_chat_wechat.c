@@ -406,7 +406,7 @@ static void __ui_set_emotion(char *emotion)
     }
 
     char *emo_icon = sg_font.emoji_list[0].emo_icon;
-    for (int i = 0; i < EMO_ICON_MAX_NUM; i++) {
+    for (int i = 0; i < FONT_EMO_ICON_MAX_NUM; i++) {
         if (strcmp(emotion, sg_font.emoji_list[i].emo_name) == 0) {
             emo_icon = sg_font.emoji_list[i].emo_icon;
             PR_DEBUG("find emo:%s", emotion);

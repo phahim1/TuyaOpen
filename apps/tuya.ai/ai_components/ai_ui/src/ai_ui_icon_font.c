@@ -70,7 +70,7 @@ static AI_UI_EMOJI_LIST_T sg_awesome_emo_list[] = {
     {"HAPPY",    FONT_AWESOME_EMOJI_HAPPY},
 };
 #else
-static  AI_UI_EMOJI_LIST_T sg_emo_list[EMO_ICON_MAX_NUM] = {
+static  AI_UI_EMOJI_LIST_T sg_emo_list[] = {
     {"NEUTRAL",  "😶"}, 
     {"SAD",      "😔"},      
     {"ANGRY",    "😠"}, 
