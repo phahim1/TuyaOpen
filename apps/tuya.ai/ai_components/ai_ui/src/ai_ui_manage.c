@@ -14,6 +14,8 @@
 /***********************************************************
 ************************macro define************************
 ***********************************************************/
+#define AI_MSG_MAX_BUF_LEN  1024
+
 
 /***********************************************************
 ***********************typedef define***********************
@@ -57,20 +59,41 @@ static void __ui_disp_msg_handle(AI_UI_MSG_T *msg_data)
                 sg_ui_intfs.disp_ai_msg_stream_start();
             }
 
+#if defined(ENABLE_AI_UI_TEXT_STREAMING) && (ENABLE_AI_UI_TEXT_STREAMING == 1)
             ai_ui_stream_text_start();
+#endif
         } 
         break;
         case AI_UI_DISP_AI_MSG_STREAM_DATA: {
+
+#if defined(ENABLE_AI_UI_TEXT_STREAMING) && (ENABLE_AI_UI_TEXT_STREAMING == 1)
             ai_ui_stream_text_write(msg_data->data);
+#else 
+            if(sg_ui_intfs.disp_ai_msg_stream_data) {
+                sg_ui_intfs.disp_ai_msg_stream_data(msg_data->data);
+            }
+#endif
         } 
         break;
         case AI_UI_DISP_AI_MSG_STREAM_END: {
-            ai_ui_stream_text_write(NULL);
+#if defined(ENABLE_AI_UI_TEXT_STREAMING) && (ENABLE_AI_UI_TEXT_STREAMING == 1)
+            ai_ui_stream_text_end();
+#else 
+            if(sg_ui_intfs.disp_ai_msg_stream_end) {
+                sg_ui_intfs.disp_ai_msg_stream_end();
+            }
+#endif
         } 
         break;
         case AI_UI_DISP_AI_MSG_STREAM_INTERRUPT: {
-            ai_ui_stream_text_write(NULL);
+#if defined(ENABLE_AI_UI_TEXT_STREAMING) && (ENABLE_AI_UI_TEXT_STREAMING == 1)
+            ai_ui_stream_text_end();
             ai_ui_stream_text_reset();
+#else
+        if(sg_ui_intfs.disp_ai_msg_stream_end) {
+            sg_ui_intfs.disp_ai_msg_stream_end();
+        }
+#endif
         } 
         break;
         case AI_UI_DISP_SYSTEM_MSG: {
@@ -136,6 +159,7 @@ static void __ai_chat_ui_task(void *args)
     }
 }
 
+#if defined(ENABLE_AI_UI_TEXT_STREAMING) && (ENABLE_AI_UI_TEXT_STREAMING == 1)
 static void __ai_chat_ui_stream_text_disp(char *string)
 {
     if(NULL == string) {
@@ -148,6 +172,7 @@ static void __ai_chat_ui_stream_text_disp(char *string)
         }
     }
 }
+#endif
 
 OPERATE_RET ai_ui_init(void)
 {
@@ -163,7 +188,9 @@ OPERATE_RET ai_ui_init(void)
 
     TUYA_CALL_ERR_RETURN(tal_thread_create_and_start(&sg_ui_thrd_hdl, NULL, NULL, __ai_chat_ui_task, NULL, &cfg));
 
+#if defined(ENABLE_AI_UI_TEXT_STREAMING) && (ENABLE_AI_UI_TEXT_STREAMING == 1)
     TUYA_CALL_ERR_RETURN(ai_ui_stream_text_init(__ai_chat_ui_stream_text_disp));
+#endif
 
     if(sg_ui_intfs.disp_init) {
         TUYA_CALL_ERR_RETURN(sg_ui_intfs.disp_init());

@@ -15,7 +15,9 @@
 #define STREAM_BUFF_MAX_LEN          1024
 #define STREAM_TEXT_SHOW_WORD_NUM    10
 #define ONE_WORD_MAX_LEN             4
+
 #define STREAM_READ_TEXT_BUF_LEN    (STREAM_TEXT_SHOW_WORD_NUM * ONE_WORD_MAX_LEN + 1)
+
 /***********************************************************
 ***********************typedef define***********************
 ***********************************************************/
@@ -182,16 +184,22 @@ void ai_ui_stream_text_write(const char *text)
     }
 
     if(text == NULL) {
-        sg_text_stream.is_start = false;
         return;
     }
 
-    if(sg_text_stream.text_ringbuff) {
-        tal_mutex_lock(sg_text_stream.rb_mutex);
-        tuya_ring_buff_write(sg_text_stream.text_ringbuff, text, strlen(text));
-        tal_mutex_unlock(sg_text_stream.rb_mutex);
-    }
+    tal_mutex_lock(sg_text_stream.rb_mutex);
+    tuya_ring_buff_write(sg_text_stream.text_ringbuff, text, strlen(text));
+    tal_mutex_unlock(sg_text_stream.rb_mutex);
 }
+void ai_ui_stream_text_end(void)
+{
+    if(false == sg_text_stream.is_init || false == sg_text_stream.is_start) {
+        return;
+    }
+    
+    sg_text_stream.is_start = false;
+}
+
 
 void ai_ui_stream_text_reset(void)
 {

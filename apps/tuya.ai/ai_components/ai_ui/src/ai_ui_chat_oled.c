@@ -307,7 +307,8 @@ static void __ui_set_ai_msg_stream_data(char *text)
     }
 
     lv_vendor_disp_lock(); 
-    lv_label_ins_text(sg_ui.chat_message_label, LV_LABEL_POS_LAST, text);
+    // lv_label_ins_text(sg_ui.chat_message_label, LV_LABEL_POS_LAST, text);
+    lv_label_set_text(sg_ui.chat_message_label, text);
     lv_vendor_disp_unlock();
 }
 

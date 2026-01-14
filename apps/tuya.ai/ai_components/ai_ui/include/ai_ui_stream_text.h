@@ -34,6 +34,8 @@ void ai_ui_stream_text_start(void);
 
 void ai_ui_stream_text_write(const char *text);
 
+void ai_ui_stream_text_end(void);
+
 void ai_ui_stream_text_reset(void);
 
 #ifdef __cplusplus

@@ -45,6 +45,10 @@ if(!ENABLE_AI_CHAT_CUSTOM_UI)
     endif
 endif
 
+config ENABLE_AI_UI_TEXT_STREAMING
+    bool "enable ui ai msg text streaming display"
+    default n
+
 menuconfig ENABLE_AI_UI_ICON_FONT
     bool "enable ai ui icon font"
     default y

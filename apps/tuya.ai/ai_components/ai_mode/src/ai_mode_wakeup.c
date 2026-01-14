@@ -213,7 +213,7 @@ static OPERATE_RET __ai_mode_wakeup_handle_event(AI_NOTIFY_EVENT_T *event)
 {
     TUYA_CHECK_NULL_RETURN(event, OPRT_INVALID_PARM);
 
-    if(event->type != AI_USER_EVT_MIC_DATA) {
+    if(event->type != AI_USER_EVT_MIC_DATA && event->type != AI_USER_EVT_TTS_DATA) {
         PR_DEBUG("[====ai_wakeup] event type: %d", event->type);
     }
 

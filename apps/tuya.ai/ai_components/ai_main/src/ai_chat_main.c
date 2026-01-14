@@ -43,7 +43,8 @@
 #define TUYA_AI_CHAT_PAR       "ty_ai_chat_par"
 
 #define AI_AUDIO_SLICE_TIME         80     
-#define AI_AUDIO_VAD_ACTIVE_TIME    400  
+#define AI_AUDIO_VAD_ACTIVE_TIME    200 
+#define AI_AUDIO_VAD_OFF_TIME       1000
 /***********************************************************
 ***********************typedef define***********************
 ***********************************************************/
@@ -404,7 +405,7 @@ OPERATE_RET ai_chat_init(AI_CHAT_MODE_CFG_T *cfg)
 #if defined(ENABLE_COMP_AI_AUDIO) && (ENABLE_COMP_AI_AUDIO == 1)
     AI_AUDIO_INPUT_CFG_T input_cfg= {
         .vad_mode      = AI_AUDIO_VAD_MANUAL,
-        .vad_off_ms    = 0,
+        .vad_off_ms    = AI_AUDIO_VAD_OFF_TIME,
         .vad_active_ms = AI_AUDIO_VAD_ACTIVE_TIME,
         .slice_ms      = AI_AUDIO_SLICE_TIME,
         .output_cb     = __ai_audio_output,  

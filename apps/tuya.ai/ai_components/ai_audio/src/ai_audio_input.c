@@ -347,7 +347,7 @@ OPERATE_RET ai_audio_input_init(AI_AUDIO_INPUT_CFG_T *cfg)
     vad_cfg.noise_min_ms    = cfg->vad_off_ms;
     vad_cfg.frame_duration_ms = 10;
     vad_cfg.scale           = 1.0f;
-    tkl_vad_init(&vad_cfg);
+    TUYA_CALL_ERR_RETURN(tkl_vad_init(&vad_cfg));
 
     TUYA_CALL_ERR_RETURN(ai_audio_input_start());
 

@@ -44,6 +44,7 @@ typedef struct {
     lv_obj_t *network_label;
     lv_obj_t *notification_label;
     lv_obj_t *mute_label;
+    lv_obj_t *mode_label;
 
     lv_obj_t *stream_msg_cont;
     lv_obj_t *stream_bubble;
@@ -119,6 +120,8 @@ static void __ui_notification_timeout_cb(lv_timer_t *timer)
 
     lv_obj_add_flag(sg_ui.notification_label, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(sg_ui.status_label, LV_OBJ_FLAG_HIDDEN);
+    // Show emotion label when notification timeout
+    lv_obj_clear_flag(sg_ui.emotion_label, LV_OBJ_FLAG_HIDDEN);
 }
 
 static OPERATE_RET __ui_init(void)
@@ -152,6 +155,12 @@ static OPERATE_RET __ui_init(void)
     lv_obj_set_size(sg_ui.status_bar, LV_HOR_RES, 40);
     lv_obj_set_style_bg_color(sg_ui.status_bar, lv_palette_main(LV_PALETTE_GREEN), 0);
 
+    // Mode label (leftmost)
+    sg_ui.mode_label = lv_label_create(sg_ui.status_bar);
+    lv_obj_set_style_text_font(sg_ui.mode_label, sg_font.text, 0);
+    lv_label_set_text(sg_ui.mode_label, "");
+    lv_obj_align(sg_ui.mode_label, LV_ALIGN_LEFT_MID, 0, 0);
+
     // Status label
     sg_ui.status_label = lv_label_create(sg_ui.status_bar);
     lv_obj_set_flex_grow(sg_ui.status_label, 1);
@@ -159,10 +168,11 @@ static OPERATE_RET __ui_init(void)
     lv_obj_center(sg_ui.status_label);
     lv_label_set_text(sg_ui.status_label, INITIALIZING);
 
-    // Network status
-    sg_ui.network_label = lv_label_create(sg_ui.status_bar);
-    lv_obj_set_style_text_font(sg_ui.network_label, sg_font.icon, 0);
-    lv_obj_align(sg_ui.network_label, LV_ALIGN_RIGHT_MID, 0, 0);
+    // Emotion (left of status label)
+    sg_ui.emotion_label = lv_label_create(sg_ui.status_bar);
+    lv_obj_set_style_text_font(sg_ui.emotion_label, sg_font.icon, 0);
+    lv_obj_align_to(sg_ui.emotion_label, sg_ui.status_label, LV_ALIGN_OUT_LEFT_MID, -5, 0);
+    lv_label_set_text(sg_ui.emotion_label, FONT_AWESOME_AI_CHIP);
 
     // Notification label
     sg_ui.notification_label = lv_label_create(sg_ui.status_bar);
@@ -172,11 +182,10 @@ static OPERATE_RET __ui_init(void)
     lv_label_set_text(sg_ui.notification_label, "");
     lv_obj_add_flag(sg_ui.notification_label, LV_OBJ_FLAG_HIDDEN);
 
-    // Emotion
-    sg_ui.emotion_label = lv_label_create(sg_ui.status_bar);
-    lv_obj_set_style_text_font(sg_ui.emotion_label, sg_font.icon, 0);
-    lv_obj_align(sg_ui.emotion_label, LV_ALIGN_LEFT_MID, 0, 0);
-    lv_label_set_text(sg_ui.emotion_label, FONT_AWESOME_AI_CHIP);
+    // Network status (rightmost)
+    sg_ui.network_label = lv_label_create(sg_ui.status_bar);
+    lv_obj_set_style_text_font(sg_ui.network_label, sg_font.icon, 0);
+    lv_obj_align(sg_ui.network_label, LV_ALIGN_RIGHT_MID, 0, 0);
 
     // content
     sg_ui.content = lv_obj_create(sg_ui.container);
@@ -419,6 +428,10 @@ static void __ui_set_emotion(char *emotion)
     lv_vendor_disp_lock();
     lv_obj_set_style_text_font(sg_ui.emotion_label, sg_font.emoji, 0);
     lv_label_set_text(sg_ui.emotion_label, emo_icon);
+    // Re-align emotion label (left of status label)
+    if (sg_ui.status_label != NULL) {
+        lv_obj_align_to(sg_ui.emotion_label, sg_ui.status_label, LV_ALIGN_OUT_LEFT_MID, -5, 0);
+    }
     lv_vendor_disp_unlock();
 }
 
@@ -431,6 +444,10 @@ static void __ui_set_status(char *status)
     lv_vendor_disp_lock();
     lv_label_set_text(sg_ui.status_label, status);
     lv_obj_set_style_text_align(sg_ui.status_label, LV_TEXT_ALIGN_CENTER, 0);
+    // Re-align emotion label after status label text change
+    if (sg_ui.emotion_label != NULL) {
+        lv_obj_align_to(sg_ui.emotion_label, sg_ui.status_label, LV_ALIGN_OUT_LEFT_MID, -5, 0);
+    }
     lv_vendor_disp_unlock();
 }
 
@@ -444,6 +461,9 @@ static void __ui_set_notification(char *notification)
     lv_label_set_text(sg_ui.notification_label, notification);
     lv_obj_add_flag(sg_ui.status_label, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(sg_ui.notification_label, LV_OBJ_FLAG_HIDDEN);
+    // Hide emotion label when showing notification
+    lv_obj_add_flag(sg_ui.emotion_label, LV_OBJ_FLAG_HIDDEN);
+    
     if (NULL == sg_notification_tm) {
         sg_notification_tm = lv_timer_create(__ui_notification_timeout_cb, 3000, NULL);
     } else {
@@ -462,6 +482,21 @@ static void __ui_set_network(AI_UI_WIFI_STATUS_E wifi_status)
 
     lv_vendor_disp_lock();
     lv_label_set_text(sg_ui.network_label, wifi_icon);
+    // Re-align network label to rightmost position
+    lv_obj_align(sg_ui.network_label, LV_ALIGN_RIGHT_MID, 0, 0);
+    lv_vendor_disp_unlock();
+}
+
+static void __ui_set_chat_mode(char *chat_mode)
+{
+    if (sg_ui.mode_label == NULL || chat_mode == NULL) {
+        return;
+    }
+
+    lv_vendor_disp_lock();
+    lv_label_set_text(sg_ui.mode_label, chat_mode);
+    // Re-align mode label to leftmost position
+    lv_obj_align(sg_ui.mode_label, LV_ALIGN_LEFT_MID, 0, 0);
     lv_vendor_disp_unlock();
 }
 
@@ -550,6 +585,7 @@ OPERATE_RET ai_ui_chat_wechat_register(void)
     intfs.disp_ai_mode_state       = __ui_set_status;
     intfs.disp_notification        = __ui_set_notification;
     intfs.disp_wifi_state          = __ui_set_network;
+    intfs.disp_ai_chat_mode        = __ui_set_chat_mode;
 
 #if defined(ENABLE_COMP_AI_VIDEO) && (ENABLE_COMP_AI_VIDEO == 1)
     intfs.disp_camera_start        = __disp_camera_start;
