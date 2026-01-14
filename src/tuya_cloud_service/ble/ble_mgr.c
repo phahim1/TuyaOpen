@@ -191,9 +191,9 @@ static int ble_adv_set(tuya_ble_mgr_t *ble)
     if (device_name_len > TUYA_BLE_NAME_LEN) {
         device_name_len = TUYA_BLE_NAME_LEN;
     }
-    memcpy(&ble->rsp_data[ble->rsp_len], ble->cfg.device_name, device_name_len); /* device name */
     ble->rsp_data[ble->rsp_len++] = device_name_len + 1;
     ble->rsp_data[ble->rsp_len++] = 0x09; /* type */
+    memcpy(&ble->rsp_data[ble->rsp_len], ble->cfg.device_name, device_name_len);
     ble->rsp_len += device_name_len;
 
     tuya_ble_raw_print("adv_data", 20, (uint8_t *)ble->adv_data, ble->adv_len);
