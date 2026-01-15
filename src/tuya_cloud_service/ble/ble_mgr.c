@@ -881,6 +881,46 @@ void ble_session_system_process(ble_packet_t *packet, void *priv_data)
     }
 }
 
+// ble event params malloc&copy
+static TAL_BLE_EVT_PARAMS_T * ble_event_msg_copy(TAL_BLE_EVT_PARAMS_T *evt)
+{
+    TAL_BLE_EVT_PARAMS_T *msg = NULL;
+
+    msg = tal_malloc(sizeof(TAL_BLE_EVT_PARAMS_T));
+    if (NULL == msg) {
+        return NULL;
+    }
+    memcpy(msg, evt, sizeof(TAL_BLE_EVT_PARAMS_T));
+
+    if (TAL_BLE_EVT_WRITE_REQ == evt->type && evt->ble_event.write_report.report.len > 0) {
+        msg->ble_event.write_report.report.p_data =
+            tal_malloc(evt->ble_event.write_report.report.len);
+        if (NULL == msg->ble_event.write_report.report.p_data) {
+            tal_free(msg);
+            return NULL;
+        }
+        memcpy(msg->ble_event.write_report.report.p_data, evt->ble_event.write_report.report.p_data,
+                evt->ble_event.write_report.report.len);
+    }
+
+    return msg;
+}
+
+// ble event params free
+static void ble_event_msg_free(TAL_BLE_EVT_PARAMS_T *msg)
+{
+    if (NULL == msg) {
+        return;
+    }
+
+    if (TAL_BLE_EVT_WRITE_REQ == msg->type && msg->ble_event.write_report.report.p_data) {
+        tal_free(msg->ble_event.write_report.report.p_data);
+        msg->ble_event.write_report.report.p_data = NULL;
+    }
+
+    tal_free(msg);
+}
+
 static void tal_ble_event_callback(void *data)
 {
     tuya_ble_mgr_t *ble = s_ble_mgr;
@@ -955,7 +995,7 @@ static void tal_ble_event_callback(void *data)
     }
 
     if (data) {
-        tal_free(data);
+        ble_event_msg_free(data);
         data = NULL;
     }
 }
@@ -1010,11 +1050,13 @@ static void tal_ble_event_on_worq(TAL_BLE_EVT_PARAMS_T *msg)
 {
     TAL_BLE_EVT_PARAMS_T *data;
 
-    data = tal_malloc(sizeof(TAL_BLE_EVT_PARAMS_T));
-    if (data) {
-        memcpy(data, (TAL_BLE_EVT_PARAMS_T *)msg, sizeof(TAL_BLE_EVT_PARAMS_T));
-        tal_workq_schedule(WORKQ_HIGHTPRI, tal_ble_event_callback, data);
+    data = ble_event_msg_copy(msg);
+    if (NULL == data) {
+        PR_ERR("ble event msg copy fail");
+        return;
     }
+
+    tal_workq_schedule(WORKQ_HIGHTPRI, tal_ble_event_callback, data);
 }
 
 /**
