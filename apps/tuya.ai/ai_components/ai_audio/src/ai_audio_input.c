@@ -148,15 +148,13 @@ static void __update_vad_flag(AI_AUDIO_VAD_STATE_E flag)
 */
 static void __record_task(void *arg)
 {
-    SYS_TIME_T elapsed = 0;
     bool more_data = false;
-
-    NewStopWatch(sw);
 
     while(sg_recorder->vad_task && tal_thread_get_state(sg_recorder->vad_task) == THREAD_STATE_RUNNING) {
         /* Microphone disabled or not wake-up, don't need to send VAD stat change */
         if (!sg_recorder->enable || !sg_recorder->wakeup_flag) {
-           goto nextloop;
+           tal_system_sleep(10);
+		   continue;
         }
 
         __audio_slice_check_and_send(&more_data);
@@ -172,18 +170,7 @@ static void __record_task(void *arg)
                 __update_vad_flag(sg_recorder->vad_flag);
             }
         }
-
-nextloop:
-        if (!more_data) {
-            elapsed = sw.elapsed_ms(&sw);
-            if (elapsed < 10) {
-                tal_system_sleep(10 - elapsed);
-            }
-        }
-        sw.restart(&sw);
     }
-
-    PR_NOTICE("audio record task exit");
 }
 
 /**
@@ -230,14 +217,14 @@ static AI_AUDIO_RECODER_T *__audio_recorder_create(AI_AUDIO_INPUT_CFG_T *cfg, TD
     sg_recorder->vad_mode       = cfg->vad_mode;
 
     uint32_t audio_1ms_size     = audio_info->sample_rate * audio_info->sample_bits * audio_info->sample_ch_num / 8 / 1000;
-    sg_recorder->vad_size       = (cfg->vad_active_ms + cfg->vad_off_ms) * audio_1ms_size + 1;
+    sg_recorder->vad_size       = (cfg->vad_active_ms + 300) * audio_1ms_size + 1;
     sg_recorder->slice_size     = cfg->slice_ms * audio_1ms_size;
 
     uint32_t rb_size = sg_recorder->vad_size;
     TUYA_CALL_ERR_GOTO(tuya_ring_buff_create(rb_size, OVERFLOW_PSRAM_STOP_TYPE, &sg_recorder->ringbuf), __error);
     TUYA_CALL_ERR_GOTO(tal_mutex_create_init(&sg_recorder->mutex), __error);
     PR_DEBUG("recorder vad mode %d", cfg->vad_mode);
-    PR_DEBUG("recorder total ms %d, slice ms %d, vad cache ms %d", rb_size, cfg->slice_ms, cfg->vad_active_ms + cfg->vad_off_ms);
+    PR_DEBUG("recorder total ms %d, slice ms %d, vad active %d ms, vad off timeout %d", rb_size, cfg->slice_ms, cfg->vad_active_ms, cfg->vad_off_ms);
 
     return sg_recorder;
 
@@ -386,7 +373,7 @@ OPERATE_RET ai_audio_input_reset(void)
     tal_mutex_lock(sg_recorder->mutex);
     tuya_ring_buff_reset(sg_recorder->ringbuf);
     tal_mutex_unlock(sg_recorder->mutex);
-    sg_recorder->vad_flag = AI_AUDIO_VAD_STOP;
+    //sg_recorder->vad_flag = AI_AUDIO_VAD_STOP;
 
     if (AI_AUDIO_VAD_AUTO == sg_recorder->vad_mode) {
         PR_NOTICE("audio input -> vad stop!");

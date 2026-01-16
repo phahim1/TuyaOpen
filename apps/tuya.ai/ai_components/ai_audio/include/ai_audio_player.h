@@ -60,6 +60,12 @@ typedef enum {
     AI_AUDIO_PLAYER_TTS_ABORT,
 } AI_AUDIO_PLAYER_TTS_STATE_E;
 
+typedef enum {
+    AI_AUDIO_PLAYER_FG = 0,   // frontground player, used to play tts
+    AI_AUDIO_PLAYER_BG = 1,   // background player, used to play music
+    AI_AUDIO_PLAYER_ALL = 2,  // all player
+}AI_AUDIO_PLAYER_TYPE_E;
+
 typedef struct {
     uint32_t                      id;
     char                         *url;
@@ -131,6 +137,14 @@ OPERATE_RET ai_audio_player_deinit(void);
 OPERATE_RET ai_audio_player_start(char *id);
 
 /**
+@brief Play TTS from URL
+@param playtts Pointer to TTS play structure
+@param is_loop Loop flag (unused)
+@return OPERATE_RET Operation result
+*/
+OPERATE_RET ai_audio_play_tts_url(AI_AUDIO_PLAY_TTS_T *playtts, bool is_loop);
+
+/**
 @brief Play audio data from memory
 @param format Audio codec format
 @param data Pointer to audio data
@@ -142,11 +156,12 @@ OPERATE_RET ai_audio_play_data(AI_AUDIO_CODEC_E format, uint8_t *data, uint32_t 
 /**
 @brief Play TTS stream data
 @param state TTS stream state (START, DATA, STOP, ABORT)
+@param codec Audio codec format
 @param data Pointer to TTS data
 @param len TTS data length
 @return OPERATE_RET Operation result
 */
-OPERATE_RET ai_audio_play_tts_stream(AI_AUDIO_PLAYER_TTS_STATE_E state, char *data,  int len);
+OPERATE_RET ai_audio_play_tts_stream(AI_AUDIO_PLAYER_TTS_STATE_E state, AI_AUDIO_CODEC_E codec, char *data,  int len);
 
 /**
 @brief Play music from playlist
@@ -157,9 +172,10 @@ OPERATE_RET ai_audio_play_music(AI_AUDIO_MUSIC_T *music);
 
 /**
 @brief Stop all audio players
+@param type Player type to stop (foreground, background, or all)
 @return OPERATE_RET Operation result
 */
-OPERATE_RET ai_audio_player_stop(void);
+OPERATE_RET ai_audio_player_stop(AI_AUDIO_PLAYER_TYPE_E type);
 
 /**
 @brief Set music continuous play flag
@@ -203,7 +219,6 @@ OPERATE_RET ai_audio_player_set_vol(int vol);
 OPERATE_RET ai_audio_player_get_vol(int *vol);
 
 #if defined(AI_PLAYER_ALERT_SOURCE_CUSTOM) && (AI_PLAYER_ALERT_SOURCE_CUSTOM == 1)
-
 
 OPERATE_RET ai_audio_player_reg_alert_cb(AI_PLAYER_ALERT_CUSTOM_CB cb);
 #endif

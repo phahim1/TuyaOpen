@@ -1,26 +1,16 @@
 /**
- * @file ai_skill.h
- * @brief AI skill module header
- *
- * This header file defines the functions for processing AI skills such as
- * emotion, music, story, and play control skills.
- *
- * @copyright Copyright (c) 2021-2025 Tuya Inc. All Rights Reserved.
- *
+ * @file skill_cloudevent.h
+ * @version 0.1
+ * @copyright Copyright (c) 2021-2026 Tuya Inc. All Rights Reserved.
  */
 
-#ifndef __AI_SKILL_H__
-#define __AI_SKILL_H__
+#ifndef __SKILL_CLOUDEVENT_H__
+#define __SKILL_CLOUDEVENT_H__
 
 #include "tuya_cloud_types.h"
 #include "cJSON.h"
-#include "tuya_ai_output.h"
-#include "skill_emotion.h"
-#include "skill_cloudevent.h"
-
-#if defined(ENABLE_COMP_AI_AUDIO) && (ENABLE_COMP_AI_AUDIO == 1)
 #include "skill_music_story.h"
-#endif
+#include "tuya_ai_protocol.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -35,14 +25,13 @@ extern "C" {
 ***********************typedef define***********************
 ***********************************************************/
 
-
 /***********************************************************
 ********************function declaration********************
 ***********************************************************/
-OPERATE_RET ai_text_process(AI_TEXT_TYPE_E type, cJSON *root, bool eof);
+OPERATE_RET ai_parse_cloud_event(cJSON *json);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* __AI_SKILL_H__ */
+#endif /* __SKILL_CLOUDEVENT_H__ */

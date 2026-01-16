@@ -30,6 +30,10 @@
 #include "ai_ui_manage.h"
 #endif
 
+#if defined(ENABLE_COMP_AI_VIDEO) && (ENABLE_COMP_AI_VIDEO == 1)
+#include "ai_video_input.h"
+#endif
+
 #if defined(ENABLE_COMP_AI_MODE_HOLD) && (ENABLE_COMP_AI_MODE_HOLD == 1)
 #include "ai_mode_hold.h"
 #endif

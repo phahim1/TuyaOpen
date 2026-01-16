@@ -268,7 +268,7 @@ static OPERATE_RET __ai_mode_hold_handle_key(TDL_BUTTON_TOUCH_EVENT_E event, voi
 
     switch(event) {
         case TDL_BUTTON_PRESS_SINGLE_CLICK: {
-            ai_audio_player_stop();
+            ai_audio_player_stop(AI_AUDIO_PLAYER_ALL);
             ai_audio_input_reset();
             tuya_ai_agent_event(AI_EVENT_CHAT_BREAK, 0);
 

@@ -107,9 +107,9 @@ void ai_chat_ui_handle_event(AI_NOTIFY_EVENT_T *event)
     case AI_USER_EVT_EMOTION:{
         AI_NOTIFY_EMO_T *emo = (AI_NOTIFY_EMO_T *)(event->data);
 
-        for (uint32_t idx = 0; idx < emo->emo_cnt; idx++) {
-            PR_DEBUG("emo:%s", emo->emotion[idx]);
-            ai_ui_disp_msg(AI_UI_DISP_EMOTION, (uint8_t *)emo->emotion[idx], strlen(emo->emotion[idx]));
+        if(emo) {
+            PR_NOTICE("emoji: %s, name: %s", emo->emoji, emo->name);
+            ai_ui_disp_msg(AI_UI_DISP_EMOTION, (uint8_t *)emo->name, strlen(emo->name));
         }
     }
     break;

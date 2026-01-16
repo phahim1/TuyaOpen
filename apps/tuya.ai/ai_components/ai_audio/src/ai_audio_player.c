@@ -156,12 +156,17 @@ static OPERATE_RET __player_event(void *data)
     PR_DEBUG("audio player -> player %s event: %d", (event->handle == __s_tone_player) ? "tts" : "music", event->state);
 
     OPERATE_RET rt = OPRT_OK;
+    int player_vol = 0;
+    tuya_ai_player_get_volume(NULL, &player_vol);
     /* Player finished or failed */
     if (event->state == AI_PLAYER_STOPPED) {
         PR_DEBUG("audio player -> stop event");
         if (!ai_audio_player_is_playing()) {
             ai_user_event_notify(AI_USER_EVT_PLAY_END, NULL);
-        }
+        }else {
+			PR_DEBUG("audio player -> playing stop event, music vol change to %d", player_vol);
+			tuya_ai_player_set_volume(__s_music_player, player_vol);	
+		}
 
         /* If TTS play stop, reset play flag */
         if(event->handle == __s_tone_player && __s_tts_play_flag) {
@@ -170,6 +175,10 @@ static OPERATE_RET __player_event(void *data)
     }
     else if (event->state == AI_PLAYER_PLAYING) {
         PR_DEBUG("audio player -> playing start event");
+        if (event->handle == __s_tone_player && AI_PLAYER_PLAYING == tuya_ai_player_get_state(__s_music_player)) {
+            PR_DEBUG("audio player -> playing start event, music vol change to %d", player_vol/2);
+            tuya_ai_player_set_volume(__s_music_player, player_vol/2);
+        }
         ai_user_event_notify(AI_USER_EVT_PLAY_CTL_PLAY, NULL);
     } else if (event->state == AI_PLAYER_PAUSED) {
         PR_DEBUG("audio player -> pause event");
@@ -355,11 +364,12 @@ OPERATE_RET ai_audio_play_data(AI_AUDIO_CODEC_E format, uint8_t *data, uint32_t 
 /**
 @brief Play TTS stream data
 @param state TTS stream state (START, DATA, STOP, ABORT)
+@param codec Audio codec format
 @param data Pointer to TTS data
 @param len TTS data length
 @return OPERATE_RET Operation result
 */
-OPERATE_RET ai_audio_play_tts_stream(AI_AUDIO_PLAYER_TTS_STATE_E state, char *data,  int len)
+OPERATE_RET ai_audio_play_tts_stream(AI_AUDIO_PLAYER_TTS_STATE_E state, AI_AUDIO_CODEC_E codec, char *data,  int len)
 {
     OPERATE_RET rt = OPRT_OK;
     
@@ -369,7 +379,7 @@ OPERATE_RET ai_audio_play_tts_stream(AI_AUDIO_PLAYER_TTS_STATE_E state, char *da
         __s_tts_play_flag = TRUE;
         ai_user_event_notify(AI_USER_EVT_TTS_PRE, NULL);
         TUYA_CALL_ERR_LOG(tuya_ai_playlist_clear(__s_tone_playlist));
-        TUYA_CALL_ERR_LOG(tuya_ai_player_start(__s_tone_player, AI_PLAYER_SRC_MEM, NULL, AI_AUDIO_CODEC_MP3));
+        TUYA_CALL_ERR_LOG(tuya_ai_player_start(__s_tone_player, AI_PLAYER_SRC_MEM, NULL, codec));
         ai_user_event_notify(AI_USER_EVT_TTS_START, NULL);
         break;
     case AI_AUDIO_PLAYER_TTS_DATA:
@@ -408,26 +418,45 @@ OPERATE_RET ai_audio_play_tts_stream(AI_AUDIO_PLAYER_TTS_STATE_E state, char *da
 OPERATE_RET ai_audio_play_local(char *url, char *song_name, char *artist, int format, int size)
 {
     OPERATE_RET rt = OPRT_OK;
-
+	PR_DEBUG("audio player -> play local url: %s", url);
+    AI_PLAYER_SRC_E src = (strstr(url, "http://") == url || strstr(url, "https://") == url) ?
+                           AI_PLAYER_SRC_URL : AI_PLAYER_SRC_FILE;
     TUYA_CALL_ERR_LOG(tuya_ai_playlist_clear(__s_music_playlist));
-    TUYA_CALL_ERR_LOG(tuya_ai_playlist_add(__s_music_playlist, AI_PLAYER_SRC_FILE, url, format));
+    TUYA_CALL_ERR_LOG(tuya_ai_playlist_add(__s_music_playlist, src, url, format));
 
     return rt;
 }
 
 /**
 @brief Stop all audio players
+@param type Player type to stop (foreground, background, or all)
 @return OPERATE_RET Operation result
 */
-OPERATE_RET ai_audio_player_stop(void)
+OPERATE_RET ai_audio_player_stop(AI_AUDIO_PLAYER_TYPE_E type)
 {
     OPERATE_RET rt = OPRT_OK;
 
     PR_DEBUG("audio player -> stop all player");
-    TUYA_CALL_ERR_LOG(tuya_ai_playlist_clear(__s_tone_playlist));
-    TUYA_CALL_ERR_LOG(tuya_ai_playlist_clear(__s_music_playlist));
-    TUYA_CALL_ERR_LOG(tuya_ai_player_stop(__s_tone_player));
-    TUYA_CALL_ERR_LOG(tuya_ai_player_stop(__s_music_player));
+
+    switch (type)
+    {
+    case AI_AUDIO_PLAYER_FG:
+        TUYA_CALL_ERR_LOG(tuya_ai_playlist_clear(__s_tone_playlist));
+        TUYA_CALL_ERR_LOG(tuya_ai_player_stop(__s_tone_player));
+        break;
+    case AI_AUDIO_PLAYER_BG:
+        TUYA_CALL_ERR_LOG(tuya_ai_playlist_clear(__s_music_playlist));
+        TUYA_CALL_ERR_LOG(tuya_ai_player_stop(__s_music_player));
+        break;
+    case AI_AUDIO_PLAYER_ALL:
+        TUYA_CALL_ERR_LOG(tuya_ai_playlist_clear(__s_tone_playlist));
+        TUYA_CALL_ERR_LOG(tuya_ai_player_stop(__s_tone_player));
+        TUYA_CALL_ERR_LOG(tuya_ai_playlist_clear(__s_music_playlist));
+        TUYA_CALL_ERR_LOG(tuya_ai_player_stop(__s_music_player));
+        break;
+    default:
+        break;
+    }
 
     return rt;
 }

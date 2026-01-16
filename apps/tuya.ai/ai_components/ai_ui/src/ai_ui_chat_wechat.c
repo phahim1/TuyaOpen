@@ -524,7 +524,7 @@ static OPERATE_RET __disp_camera_start(uint16_t width, uint16_t height)
     }
 
     /*disable lvgl display*/
-    disp_disable_update();
+    disp_disable_update(NULL);
 
     sg_disp_camera.is_disp_start = true;
 
@@ -558,7 +558,7 @@ OPERATE_RET __disp_camera_end(void)
     sg_disp_camera.is_disp_start = false;
 
     /*enable lvgl display*/
-    disp_enable_update();
+    disp_enable_update(NULL);
 
     // tdl_disp_fb_manage_release(&sg_disp_camera.fb_manage);
 

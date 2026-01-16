@@ -153,8 +153,7 @@ static void __ai_handle_event(AI_NOTIFY_EVENT_T *event)
         }
         break;
         case AI_USER_EVT_PLAY_CTL_PAUSE:{
-            ai_audio_player_set_resume(false);
-            ai_audio_player_set_replay(false);
+            ai_audio_player_stop(AI_AUDIO_PLAYER_BG);
         }
         break;
         case AI_USER_EVT_PLAY_CTL_REPLAY:{
@@ -255,7 +254,7 @@ static void __ai_button_function_cb(char *name, TDL_BUTTON_TOUCH_EVENT_E event, 
 
     if(TDL_BUTTON_PRESS_DOUBLE_CLICK == event) {
         #if defined(ENABLE_COMP_AI_AUDIO) && (ENABLE_COMP_AI_AUDIO == 1)
-        ai_audio_player_stop();
+        ai_audio_player_stop(AI_AUDIO_PLAYER_ALL);
         #endif
 
         /* AI agent interrupt */

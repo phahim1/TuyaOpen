@@ -268,7 +268,8 @@ static OPERATE_RET __parse_playcontrol_data(cJSON *data, cJSON *skill_data, AI_A
 
     if (strcmp(action->valuestring, "next") == 0 || 
         strcmp(action->valuestring, "prev") == 0 || 
-        strcmp(action->valuestring, "play") == 0) {
+        strcmp(action->valuestring, "play") == 0 ||
+        strcmp(action->valuestring, "stop") == 0 ) {
         return ai_skill_parse_music(data, music);
     }
 
