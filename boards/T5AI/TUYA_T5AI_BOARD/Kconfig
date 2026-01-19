@@ -54,9 +54,16 @@ choice TUYA_T5AI_BOARD_EX_MODULE
         select ENABLE_LVGL_OS_FREERTOS if (LVGL_VERSION_9)    
 endchoice
 
+config ENABLE_EYES_TWO_LCD
+        bool "with two lcd as two eyes" 
+        depends on TUYA_T5AI_BOARD_EX_MODULE_EYES
+        default n
+        select ENABLE_DISPLAY_2
+
 if(TUYA_T5AI_BOARD_EX_MODULE_35565LCD || TUYA_T5AI_BOARD_EX_MODULE_EYES)
     config ENABLE_EX_MODULE_CAMERA
         bool "with camera module"
         default n
         select ENABLE_CAMERA
 endif
+

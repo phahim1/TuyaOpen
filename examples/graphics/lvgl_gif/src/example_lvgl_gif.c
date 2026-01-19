@@ -60,12 +60,28 @@ void user_main(void)
 
     lv_vendor_init(DISPLAY_NAME);
 
+#if defined(ENABLE_DISPLAY_2) && (ENABLE_DISPLAY_2 == 1)
+    lv_vendor_add_disp_dev(DISPLAY_NAME_2);
+#endif
+    lv_disp_t * disp1 = lv_disp_get_next(NULL); 
+
     LV_IMG_DECLARE(tuya_gif2);
     lv_obj_t * img;
 
-    img = lv_gif_create(lv_scr_act());
+    img = lv_gif_create(lv_disp_get_scr_act(disp1));
     lv_gif_set_src(img, &tuya_gif2);
     lv_obj_align(img, LV_ALIGN_CENTER, 0, 0);
+
+#if defined(ENABLE_DISPLAY_2) && (ENABLE_DISPLAY_2 == 1)
+    lv_disp_t * disp2 = lv_disp_get_next(disp1);    
+
+    LV_IMG_DECLARE(tuya_gif);
+    lv_obj_t * img_2;
+
+    img_2 = lv_gif_create(lv_disp_get_scr_act(disp2));
+    lv_gif_set_src(img_2, &tuya_gif);
+    lv_obj_align(img_2, LV_ALIGN_CENTER, 0, 0);               
+#endif
 
     lv_vendor_start(5, 1024*8);
 }

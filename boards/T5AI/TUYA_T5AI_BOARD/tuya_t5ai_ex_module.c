@@ -115,6 +115,31 @@ static OPERATE_RET __board_register_display(void)
     TUYA_CALL_ERR_RETURN(tdd_disp_spi_st7735s_register(DISPLAY_NAME, &display_cfg));
 #endif
 
+#if defined(ENABLE_EYES_TWO_LCD) && (ENABLE_EYES_TWO_LCD == 1)
+    DISP_SPI_DEVICE_CFG_T display2_cfg;
+
+    memset(&display2_cfg, 0, sizeof(DISP_SPI_DEVICE_CFG_T));
+
+    display2_cfg.bl.type              = BOARD_LCD_BL_TYPE;
+    display2_cfg.bl.gpio.pin          = BOARD_LCD_BL_PIN;
+    display2_cfg.bl.gpio.active_level = BOARD_LCD_BL_ACTIVE_LV;
+
+    display2_cfg.width     = BOARD_LCD_WIDTH;
+    display2_cfg.height    = BOARD_LCD_HEIGHT;
+    display2_cfg.pixel_fmt = BOARD_LCD_PIXELS_FMT;
+    display2_cfg.rotation  = BOARD_LCD_ROTATION;
+
+    display2_cfg.port      = BOARD_LCD_SPI2_PORT;
+    display2_cfg.spi_clk   = BOARD_LCD_SPI2_CLK;
+    display2_cfg.cs_pin    = BOARD_LCD_SPI2_CS_PIN;
+    display2_cfg.dc_pin    = BOARD_LCD_SPI2_DC_PIN;
+    display2_cfg.rst_pin   = BOARD_LCD_SPI2_RST_PIN;
+
+    display2_cfg.power.pin  = BOARD_LCD_POWER_PIN;
+
+    TUYA_CALL_ERR_RETURN(tdd_disp_spi_st7735s_register(DISPLAY_NAME_2, &display2_cfg));
+#endif
+
     return rt;
 }
 #elif defined (TUYA_T5AI_BOARD_EX_MODULE_096_OLED) && (TUYA_T5AI_BOARD_EX_MODULE_096_OLED ==1)
