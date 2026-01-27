@@ -34,6 +34,7 @@ typedef struct {
     lv_style_t style_avatar;
     lv_style_t style_ai_bubble;
     lv_style_t style_user_bubble;
+    lv_style_t style_link;
 
     lv_obj_t *container;
     lv_obj_t *status_bar;
@@ -79,7 +80,8 @@ static AI_UI_DISP_CAMERA_T sg_disp_camera = {0};
 #endif
 
 #if defined(ENABLE_COMP_AI_PICTURE) && (ENABLE_COMP_AI_PICTURE == 1)
-static uint8_t             *sg_picture_buffer = NULL;
+static uint8_t    *sg_picture_buffer = NULL;
+static lv_timer_t *sg_picture_tm = NULL;
 #endif
 
 /***********************************************************
@@ -122,6 +124,10 @@ static void __ui_styles_init(void)
     lv_style_set_pad_all(&sg_ui.style_user_bubble, 12);
     lv_style_set_shadow_width(&sg_ui.style_user_bubble, 12);
     lv_style_set_shadow_color(&sg_ui.style_user_bubble, lv_palette_darken(LV_PALETTE_GREEN, 2));
+
+    lv_style_init(&sg_ui.style_link);
+    lv_style_set_text_color(&sg_ui.style_link, lv_color_hex(0x0066CC));
+    lv_style_set_text_decor(&sg_ui.style_link, LV_TEXT_DECOR_UNDERLINE);
 }
 
 static void __ui_notification_timeout_cb(lv_timer_t *timer)
@@ -283,24 +289,10 @@ static void __ui_set_user_msg(char *text)
     lv_vendor_disp_unlock();
 }
 
-static void __ui_set_ai_msg(char *text)
+
+static lv_obj_t *__create_ai_msg_label(lv_obj_t *parent, char *text)
 {
-    if (sg_ui.content == NULL || text == NULL || strlen(text) == 0) {
-        return;
-    }
-
-    lv_vendor_disp_lock();
-
-    // Check if the number of messages exceeds the limit
-    uint32_t child_count = lv_obj_get_child_cnt(sg_ui.content);
-    if (child_count >= MAX_MASSAGE_NUM) {
-        lv_obj_t *first_child = lv_obj_get_child(sg_ui.content, 0);
-        if (first_child) {
-            lv_obj_del(first_child);
-        }
-    }
-
-    lv_obj_t *msg_cont = lv_obj_create(sg_ui.content);
+    lv_obj_t *msg_cont = lv_obj_create(parent);
     lv_obj_remove_style_all(msg_cont);
     lv_obj_set_size(msg_cont, LV_PCT(100), LV_SIZE_CONTENT);
     lv_obj_set_style_pad_ver(msg_cont, 6, 0);
@@ -336,6 +328,29 @@ static void __ui_set_ai_msg(char *text)
     lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
 
     lv_obj_scroll_to_view_recursive(msg_cont, LV_ANIM_ON);
+
+    return label;
+}
+
+static void __ui_set_ai_msg(char *text)
+{
+    if (sg_ui.content == NULL || text == NULL || strlen(text) == 0) {
+        return;
+    }
+
+    lv_vendor_disp_lock();
+
+    // Check if the number of messages exceeds the limit
+    uint32_t child_count = lv_obj_get_child_cnt(sg_ui.content);
+    if (child_count >= MAX_MASSAGE_NUM) {
+        lv_obj_t *first_child = lv_obj_get_child(sg_ui.content, 0);
+        if (first_child) {
+            lv_obj_del(first_child);
+        }
+    }
+
+    __create_ai_msg_label(sg_ui.content, text);
+
     lv_obj_update_layout(sg_ui.content);
 
     lv_vendor_disp_unlock();
@@ -590,6 +605,30 @@ OPERATE_RET __disp_camera_end(void)
 #endif
 
 #if defined(ENABLE_COMP_AI_PICTURE) && (ENABLE_COMP_AI_PICTURE == 1)
+static void __view_photo_event_cb(lv_event_t *e) 
+{
+    lv_obj_add_flag(sg_ui.content, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(sg_ui.picture, LV_OBJ_FLAG_HIDDEN);
+}
+
+static void __return_chat_content_event_cb(lv_event_t *e) 
+{
+    if(sg_picture_tm) {
+        lv_timer_pause(sg_picture_tm);
+    }
+
+    lv_obj_add_flag(sg_ui.picture, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(sg_ui.content, LV_OBJ_FLAG_HIDDEN);
+}
+
+static void __picture_timeout_cb(lv_timer_t *timer)
+{
+    lv_timer_pause(sg_picture_tm);
+
+    lv_obj_add_flag(sg_ui.picture, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(sg_ui.content, LV_OBJ_FLAG_HIDDEN);
+}
+
 OPERATE_RET __disp_picture(TUYA_FRAME_FMT_E fmt, uint16_t width, uint16_t height,\
                                 uint8_t *data, uint32_t len)
 {
@@ -613,6 +652,8 @@ OPERATE_RET __disp_picture(TUYA_FRAME_FMT_E fmt, uint16_t width, uint16_t height
     sg_ui.picture_canvas = lv_canvas_create(sg_ui.picture);
     lv_obj_set_pos(sg_ui.picture_canvas, 0, 0);
     lv_obj_set_size(sg_ui.picture_canvas, width, height);
+    lv_obj_add_flag(sg_ui.picture_canvas, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(sg_ui.picture_canvas, __return_chat_content_event_cb, LV_EVENT_CLICKED, NULL);
 
     sg_picture_buffer = (uint8_t *)Malloc(len);
     if(NULL == sg_picture_buffer) {
@@ -624,9 +665,21 @@ OPERATE_RET __disp_picture(TUYA_FRAME_FMT_E fmt, uint16_t width, uint16_t height
     memcpy(sg_picture_buffer, data, len);
 
     lv_canvas_set_buffer(sg_ui.picture_canvas, sg_picture_buffer, width, height, LV_COLOR_FORMAT_RGB565);
+    if (NULL == sg_picture_tm) {
+        sg_picture_tm = lv_timer_create(__picture_timeout_cb, 3000, NULL);
+    } else {
+        lv_timer_reset(sg_picture_tm);
+    }
 
     lv_obj_add_flag(sg_ui.content, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(sg_ui.picture, LV_OBJ_FLAG_HIDDEN);
+
+    lv_obj_t *label = __create_ai_msg_label(sg_ui.content, VIEW_IMAGE);
+    lv_obj_add_style(label, &sg_ui.style_link, LV_STATE_DEFAULT);
+    lv_obj_add_flag(label, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(label, __view_photo_event_cb, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_update_layout(sg_ui.content);
 
     lv_vendor_disp_unlock();
 

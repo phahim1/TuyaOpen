@@ -8,11 +8,9 @@
  * @copyright Copyright (c) 2021-2025 Tuya Inc. All Rights Reserved.
  *
  */
-
-#include "tuya_cloud_types.h"
-
 #include "tal_api.h"
 #include "cJSON.h"
+#include "mix_method.h"
 
 #include "ai_user_event.h"
 #include "skill_emotion.h"
